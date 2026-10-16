@@ -15,7 +15,14 @@ Le moteur agronomique de Sillon, en TypeScript. Il ne contient que des calculs :
 ## Installation
 
 ```sh
-pnpm add github:bKNNNNN/sillon-core
+pnpm add github:bKNNNNN/sillon-core#v0.1.0
+```
+
+Depuis pnpm 10, les dépendances git ne lancent leur script de build que si tu l'autorises. Ajoute dans le `pnpm-workspace.yaml` de ton projet :
+
+```yaml
+allowBuilds:
+  sillon-core: true
 ```
 
 Node 20 ou plus récent. Le paquet est en ESM et livre ses types.
@@ -23,6 +30,7 @@ Node 20 ou plus récent. Le paquet est en ESM et livre ses types.
 ## Exemple
 
 ```ts
+declare const yamlText: string // contenu de cultures.yaml
 import { fetchForecast, forecastHarvest, parseCrops, whatsNext } from 'sillon-core';
 
 const crops = parseCrops(yamlText); // le contenu d'un fichier de cultures
