@@ -1,6 +1,6 @@
 {
   "name": "sillon-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Moteur agronomique pur pour un potager : degrés-jours, prévision de récolte, calendrier de semis, rotation, germination, client Open-Meteo.",
   "license": "MIT",
   "author": "Pierrick Deniel",

@@ -6,7 +6,8 @@ Le moteur agronomique de Sillon, en TypeScript. Il ne contient que des calculs :
 
 - `dailyGdd(tmin, tmax, tBase)` calcule les degrés-jours de croissance d'une journée, bornés à zéro.
 - `forecastHarvest` prévoit la récolte. Il cumule les degrés-jours depuis le semis ou la plantation. Il lit d'abord la météo observée, puis la prévision à 16 jours (date attendue à plus ou moins 2 jours). Au-delà, il prend les années d'archive et donne les percentiles 10, 50 et 90 de la climatologie. Si la culture n'a pas de degrés-jours, il compte simplement les jours jusqu'à maturité.
-- `whatsNext` liste ce qu'il faut semer sous abri, semer en direct, planter ou ressemer cette semaine. Il suit les fenêtres de semaines de chaque culture, y compris celles qui passent le 31 décembre, et l'intervalle entre deux semis successifs.
+- `forecastFirstHarvest` donne la date de première récolte à partir de `firstHarvestDays`, compté depuis le semis ou depuis la plantation selon la culture. Il renvoie `null` quand la plantation n'a pas la bonne date de départ, par exemple un plant acheté pour un délai compté depuis le semis.
+- `whatsNext` liste ce qu'il faut semer sous abri, semer en direct, planter ou ressemer cette semaine. Il suit les fenêtres de semaines de chaque culture, y compris celles qui passent le 31 décembre, et l'intervalle entre deux semis successifs. Une culture peut avoir plusieurs fenêtres pour une même action, par exemple un semis de printemps et un semis d'automne.
 - `rotationWarning` prévient quand une planche a porté une culture de la même famille dans les trois dernières années.
 - `germinationOutlook` estime si un lot de graines germe encore bien d'après son âge et la durée de vie des graines de l'espèce.
 - `validatePlanting`, `isValidCivilDate` et `isTooFarInFuture` refusent les dates impossibles, les dates dans le futur et les repiquages avant semis. Les messages d'erreur sont en français.
@@ -15,7 +16,7 @@ Le moteur agronomique de Sillon, en TypeScript. Il ne contient que des calculs :
 ## Installation
 
 ```sh
-pnpm add github:bKNNNNN/sillon-core#v0.1.0
+pnpm add github:bKNNNNN/sillon-core#v0.2.0
 ```
 
 Depuis pnpm 10, les dépendances git ne lancent leur script de build que si tu l'autorises. Ajoute dans le `pnpm-workspace.yaml` de ton projet :

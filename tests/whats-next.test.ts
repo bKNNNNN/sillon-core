@@ -99,4 +99,25 @@ describe('whatsNext', () => {
     expect(whatsNext([garlic], [], '2026-11-10').map((a) => a.cropId)).toContain('ail');
     expect(whatsNext([garlic], [], '2026-06-10')).toEqual([]);
   });
+
+  describe('with two windows in one field', () => {
+    const twoSeasons: Crop = {
+      ...baseCrop,
+      sowDirect: { value: [{ from: 6, to: 18 }, { from: 32, to: 44 }], estimate: true },
+    };
+
+    it('proposes sowing in the second window and names it', () => {
+      const r = whatsNext([twoSeasons], [], '2026-09-02');
+      expect(r).toEqual([expect.objectContaining({ action: 'sow_direct', estimate: true, reason: 'Fenêtre de semis direct : semaines 32 à 44.' })]);
+    });
+
+    it('proposes nothing between the two windows', () => {
+      expect(whatsNext([twoSeasons], [], '2026-06-10')).toEqual([]);
+    });
+
+    it('proposes again in autumn after a spring sowing', () => {
+      const r = whatsNext([twoSeasons], [{ ...basePlanting, sownOn: '2026-03-15' }], '2026-09-02');
+      expect(r).toEqual([expect.objectContaining({ action: 'sow_direct' })]);
+    });
+  });
 });

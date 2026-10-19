@@ -22,6 +22,25 @@ describe('crops knowledge base', () => {
     expect(() => parseCrops(bad)).toThrow(/x[\s\S]*y/);
   });
 
+  it('accepts a list of windows for one field', () => {
+    const crops = parseCrops(BASE + '  sowDirect: { value: [{ from: 6, to: 18 }, { from: 32, to: 44 }], estimate: true }\n');
+    expect(crops[0].sowDirect?.value).toEqual([{ from: 6, to: 18 }, { from: 32, to: 44 }]);
+  });
+
+  it('rejects an empty list of windows', () => {
+    expect(() => parseCrops(BASE + '  sowDirect: { value: [], estimate: true }\n')).toThrow(/x.*sowDirect/);
+  });
+
+  it('accepts firstHarvestDays counted from sowing or transplant', () => {
+    const crops = parseCrops(BASE + '  firstHarvestDays: { value: { days: 28, from: sowing }, estimate: true }\n');
+    expect(crops[0].firstHarvestDays?.value).toEqual({ days: 28, from: 'sowing' });
+  });
+
+  it('rejects firstHarvestDays with an unknown origin or a non-integer delay', () => {
+    expect(() => parseCrops(BASE + '  firstHarvestDays: { value: { days: 28, from: harvest }, estimate: true }\n')).toThrow(/firstHarvestDays/);
+    expect(() => parseCrops(BASE + '  firstHarvestDays: { value: { days: 2.5, from: sowing }, estimate: true }\n')).toThrow(/firstHarvestDays/);
+  });
+
   it('rejects non-list yaml', () => {
     expect(() => parseCrops('a: 1')).toThrow();
   });

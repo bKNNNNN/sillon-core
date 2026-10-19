@@ -15,19 +15,25 @@ function sourced<T extends z.ZodTypeAny>(value: T) {
 
 const week = z.number().int().min(1).max(53);
 const weekWindow = z.object({ from: week, to: week }).strict();
+/** One window, or several when a crop has two seasons (spring and autumn sowing). */
+const weekWindows = z.union([weekWindow, z.array(weekWindow).min(1)]);
 const positive = z.number().positive();
+const firstHarvest = z
+  .object({ days: z.number().int().positive(), from: z.enum(['sowing', 'transplant']) })
+  .strict();
 
 export const cropSchema = z
   .object({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
     name: z.string().min(1),
     family: z.string().min(1),
-    sowUnderCover: sourced(weekWindow).optional(),
-    sowDirect: sourced(weekWindow).optional(),
-    transplant: sourced(weekWindow).optional(),
+    sowUnderCover: sourced(weekWindows).optional(),
+    sowDirect: sourced(weekWindows).optional(),
+    transplant: sourced(weekWindows).optional(),
     tBaseC: sourced(z.number()).optional(),
     gdd: sourced(positive).optional(),
     daysToMaturity: sourced(positive).optional(),
+    firstHarvestDays: sourced(firstHarvest).optional(),
     spacingCm: sourced(z.object({ inRow: positive, betweenRows: positive }).strict()).optional(),
     kc: sourced(z.object({ initial: positive, mid: positive, late: positive }).strict()).optional(),
     frostSensitive: z.boolean(),
@@ -41,4 +47,10 @@ export const cropSchema = z
 
 export type Crop = z.infer<typeof cropSchema>;
 export type WeekWindow = z.infer<typeof weekWindow>;
+export type WeekWindows = z.infer<typeof weekWindows>;
+export type FirstHarvestDays = z.infer<typeof firstHarvest>;
+
+export function windowsOf(windows: WeekWindows): WeekWindow[] {
+  return Array.isArray(windows) ? windows : [windows];
+}
 export type Sourced<T> = { value: T; source?: string; estimate?: boolean };

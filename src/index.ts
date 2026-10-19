@@ -7,12 +7,25 @@ export {
   type HarvestInput,
   type HarvestPlanting,
 } from './forecast/harvest.js';
+export {
+  forecastFirstHarvest,
+  type FirstHarvest,
+  type FirstHarvestPlanting,
+} from './forecast/first-harvest.js';
 export { whatsNext, type WeeklyAction, type CalendarPlanting } from './calendar/whats-next.js';
 export { rotationWarning, FAMILY_LABELS } from './rotation.js';
 export { germinationOutlook, type GerminationOutlook } from './seeds/germination.js';
 export { validatePlanting } from './plantings/validate.js';
 export type { PlantingLike, PlantingInput, PlantingMethod, PlantingStatus } from './plantings/types.js';
-export { cropSchema, type Crop, type WeekWindow, type Sourced } from './crops/schema.js';
+export {
+  cropSchema,
+  windowsOf,
+  type Crop,
+  type WeekWindow,
+  type WeekWindows,
+  type FirstHarvestDays,
+  type Sourced,
+} from './crops/schema.js';
 export { parseCrops, getCrop } from './crops/parse.js';
 export {
   fetchForecast,
