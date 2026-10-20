@@ -91,6 +91,17 @@ Chaque résultat garde ce qu'il a lu (`inputs`, avec les paramètres) et une phr
 
 Le schéma de culture accepte aussi, tous facultatifs et chacun avec une source ou `estimate: true` : `frostClass` (`tender`, `semi`, `hardy` ; sans lui, `frostSensitive` vaut `tender` ou `hardy`), `chillC`, `rootDepthM` et `depletionP` (FAO-56 tableau 22), `germSoilC` (`min`, `optLow`, `optHigh`, `max`, l'optimum étant facultatif), et `kcStages`, soit en jours par stade (`method: fao56-table11`), soit en fraction des degrés-jours (`method: gdd-fraction`, qui exige `gdd`).
 
+## Sol, chaleur, limaces et vent
+
+Ces quatre règles lisent les mêmes heures que le gel (`fetchHourly`, 7 jours passés et 7 jours de prévision). Chaque seuil est un paramètre nommé (`SOIL_TEMP_PARAMS`, `HEAT_PARAMS`, `SLUG_PARAMS`, `WIND_PARAMS`) avec son unité, sa source ou `estimate: true`, et chaque alerte recopie ses paramètres dans `inputs.params`. Toutes portent `estimate: true`.
+
+- `soilSowingAlerts` répond « maintenant ou pas encore » pour chaque culture dont la fenêtre de semis direct est ouverte cette semaine et qui a un `germSoilC`. Elle prend la moyenne de la température du sol à 6 cm sur les 3 prochains jours (aujourd'hui compris) : `trop-froid` sous `min`, `possible` entre `min` et l'optimum ou au-dessus, `ideal` dans l'optimum, `trop-chaud` si une heure dépasse `max`. Sans optimum (le chou), jamais `ideal`. La pomme de terre lit le sol à 18 cm : 8 °C par défaut (estimation), 10 °C pour `ideal`, et le texte cite aussi le seuil de 6 °C trois jours de suite. La température du sol est modélisée pour un sol générique : c'est une estimation.
+- `heatAlerts` prévient d'une canicule (35 °C ou plus, dès qu'une culture est en terre), de la chute des fleurs de tomate après 3 nuits de suite à 24 °C ou plus (tomates en terre depuis au moins 30 jours) et de la montée en graines des salades et épinards après 3 jours de suite à 27 °C ou plus. Une alerte par série, datée du jour où la série atteint sa longueur ; une série commencée avant aujourd'hui et qui dure encore compte. `assessHeatDays` donne le détail jour par jour, jours de chaleur (30 °C) compris.
+- `slugAlerts` prévient d'une sortie de limaces une nuit humide (2 mm de pluie dans les 48 h avant 18 h, ou 6 heures à 90 % d'humidité ou plus dans la nuit) et douce (moyenne de 5 à 20 °C) quand de jeunes plants (moins de 21 jours en terre) d'une culture de `SLUG_CROPS` sont en terre. Une alerte tous les 3 jours au plus ; `lastAlertOn` reporte la dernière alerte envoyée.
+- `windAlerts` prévient des rafales de 58 km/h ou plus, d'avril à octobre, quand une culture tuteurée (`WIND_CROPS` : tomate, haricot) est en terre ou qu'un voile est posé (`fleece: true`). Pas d'alerte « le vent assèche le sol » : l'ET0 compte déjà le vent.
+
+Exemples de textes : « Haricot : sol à 9 °C en surface, trop froid pour semer (15,6 °C minimum). Attends quelques jours. », « Sortie de limaces probable la nuit du mardi 20 au mercredi 21 octobre (sol humide, nuit douce). Fais un tour à la tombée de la nuit autour des jeunes plants : salade, haricot. »
+
 ## Données de cultures
 
 Le moteur ne fournit aucune culture. Il s'utilise avec la base [sillon-cultures](https://github.com/bKNNNNN/sillon-cultures) : fenêtres de semis, degrés-jours, températures de base et durée de vie des graines, avec leurs sources. Cette base est publiée sous licence CC BY-SA 4.0, distincte de celle de ce code. Tu peux aussi écrire ton propre fichier, à condition qu'il respecte le schéma `cropSchema`.
