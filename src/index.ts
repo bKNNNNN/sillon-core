@@ -105,3 +105,15 @@ export {
   type SoilTempOptions,
   type SoilTempParams,
 } from './alerts/soil-temp.js';
+export {
+  assessHeatDays,
+  heatAlerts,
+  HEAT_PARAMS,
+  HEAT_CROPS,
+  type HeatDay,
+  type HeatLevel,
+  type HeatInputs,
+  type HeatAlert,
+  type HeatOptions,
+  type HeatParams,
+} from './alerts/heat.js';
