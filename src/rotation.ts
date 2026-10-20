@@ -49,7 +49,7 @@ const SOIL_PH_FAMILIES: ReadonlySet<string> = new Set(['brassicacees']);
 export type RotationAdvice = {
   warning: string;
   family: string;
-  /** The latest previous season the family grew on this bed. */
+  /** The latest season the family grew on this bed: a previous one, or this one for a different crop sown earlier. */
   lastYear: number;
   rotationYears: number;
   /** Show the soil pH advice card next to the warning. */
@@ -60,6 +60,18 @@ type History = Pick<PlantingLike, 'species' | 'sownOn'>[];
 
 /** A season is the calendar year of the sowing date. */
 const seasonOf = (date: string): number => Number(date.slice(0, 4));
+
+/**
+ * A past planting counts against the new one when it grew in a previous season within the rotation,
+ * or earlier in the same season as a different crop (summer cabbage then winter cabbage).
+ * A resowing or succession of the same crop in one season never counts.
+ */
+function counts(past: Crop, sownOn: string, crop: Crop, newSownOn: string, years: number): boolean {
+  const season = seasonOf(newSownOn);
+  const year = seasonOf(sownOn);
+  if (year === season) return past.id !== crop.id && sownOn < newSownOn;
+  return year < season && year > season - years;
+}
 
 function isShortCrop(crop: Crop): boolean {
   const delays = crop.firstHarvestDays?.value;
@@ -76,14 +88,12 @@ export function rotationAdvice(history: History, species: string, sownOn: string
   if (!crop || isShortCrop(crop)) return null;
   const { family } = crop;
   const years = rotationYears(family);
-  const season = seasonOf(sownOn);
   const seasons = history
     .filter((h) => {
       const past = getCrop(crops, h.species);
-      return past?.family === family && !isShortCrop(past);
+      return past?.family === family && !isShortCrop(past) && counts(past, h.sownOn, crop, sownOn, years);
     })
-    .map((h) => seasonOf(h.sownOn))
-    .filter((y) => y < season && y > season - years);
+    .map((h) => seasonOf(h.sownOn));
   if (seasons.length === 0) return null;
   const lastYear = Math.max(...seasons);
   const label = FAMILY_LABELS[family] ?? family;
@@ -96,7 +106,7 @@ export function rotationAdvice(history: History, species: string, sownOn: string
   };
 }
 
-/** The warning text alone, or null. Previous seasons only: two sowings in the same year never warn. */
+/** The warning text alone, or null. Two sowings of the same crop in one season never warn. */
 export function rotationWarning(history: History, species: string, sownOn: string, crops: Crop[]): string | null {
   return rotationAdvice(history, species, sownOn, crops)?.warning ?? null;
 }

@@ -27,9 +27,20 @@ describe('rotationWarning', () => {
       .toBe('Solanacées déjà sur cette planche en 2024 : pense à faire tourner.');
   });
 
-  it('never warns against the same season', () => {
-    expect(rotationWarning([{ species: 'ail', sownOn: '2026-02-10' }], 'poireau', '2026-04-01', crops)).toBeNull();
+  it('never warns against a resowing of the same crop in the same season', () => {
     expect(rotationWarning([{ species: 'blette', sownOn: '2026-03-01' }], 'blette', '2026-09-01', crops)).toBeNull();
+    expect(rotationWarning([{ species: 'chou', sownOn: '2026-03-01' }], 'chou', '2026-06-15', crops)).toBeNull();
+  });
+
+  it('warns for a different crop of the same family earlier in the same year', () => {
+    expect(rotationWarning([{ species: 'ail', sownOn: '2026-02-10' }], 'poireau', '2026-04-01', crops))
+      .toBe('Amaryllidacées déjà sur cette planche en 2026 : pense à faire tourner.');
+    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01' }], 'pomme-de-terre', '2026-07-20', crops))
+      .toBe('Solanacées déjà sur cette planche en 2026 : pense à faire tourner.');
+  });
+
+  it('a same-year crop sown after the new one does not warn', () => {
+    expect(rotationWarning([{ species: 'poireau', sownOn: '2026-05-01' }], 'ail', '2026-02-10', crops)).toBeNull();
   });
 
   it('two spinach sowings in the same season give no warning', () => {
