@@ -126,3 +126,12 @@ export {
   type SlugOptions,
   type SlugParams,
 } from './alerts/slugs.js';
+export {
+  windAlerts,
+  WIND_PARAMS,
+  WIND_CROPS,
+  type WindAlert,
+  type WindInputs,
+  type WindOptions,
+  type WindParams,
+} from './alerts/wind.js';
