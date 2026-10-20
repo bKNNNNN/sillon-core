@@ -94,6 +94,16 @@ describe('heatAlerts', () => {
     expect(heatAlerts(flat(5, 29, 25), young, crops, { today: TODAY })).toEqual([]);
   });
 
+  it('still warns for flowering tomatoes when a younger tomato batch went in later, in either order', () => {
+    const old = planting('tomate', { sownOn: '2026-05-01' });
+    const young = planting('tomate', { sownOn: '2026-07-01' });
+    const hours = flat(6, 28, 25);
+    expect(heatAlerts(hours, [old], crops, { today: TODAY }).map((a) => a.level)).toEqual(['nouaison']);
+    expect(heatAlerts(hours, [old, young], crops, { today: TODAY }).map((a) => a.level)).toEqual(['nouaison']);
+    expect(heatAlerts(hours, [young, old], crops, { today: TODAY }).map((a) => a.level)).toEqual(['nouaison']);
+    expect(heatAlerts(hours, [young], crops, { today: TODAY })).toEqual([]);
+  });
+
   it('keeps a run that started in the past and still goes on, dated today', () => {
     const hours = flat(6, 29, 25, '2026-07-10');
     const [a] = heatAlerts(hours, [planting('tomate')], crops, { today: TODAY });

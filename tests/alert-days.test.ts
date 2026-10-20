@@ -69,7 +69,7 @@ describe('cropsInGround', () => {
   const salade = crop('salade', 'Salade');
   const tomate = crop('tomate', 'Tomate', { aliases: ['tomate-cerise'] });
 
-  it('keeps active plantings in open ground on the date, once per crop, with the latest date', () => {
+  it('keeps active plantings in open ground on the date, once per crop, with the latest and the oldest date', () => {
     const list = cropsInGround(
       [
         planting('salade', { sownOn: '2026-09-01' }),
@@ -79,10 +79,19 @@ describe('cropsInGround', () => {
       [salade, tomate],
       '2026-10-20',
     );
-    expect(list.map((g) => [g.crop.id, g.since])).toEqual([
-      ['salade', '2026-10-10'],
-      ['tomate', '2026-05-10'],
+    expect(list.map((g) => [g.crop.id, g.since, g.oldest])).toEqual([
+      ['salade', '2026-10-10', '2026-09-01'],
+      ['tomate', '2026-05-10', '2026-05-10'],
     ]);
+  });
+
+  it('keeps the latest and the oldest date whatever order the plantings come in', () => {
+    const list = cropsInGround(
+      [planting('salade', { sownOn: '2026-10-10' }), planting('salade', { sownOn: '2026-08-15' }), planting('salade', { sownOn: '2026-09-01' })],
+      [salade],
+      '2026-10-20',
+    );
+    expect(list.map((g) => [g.since, g.oldest])).toEqual([['2026-10-10', '2026-08-15']]);
   });
 
   it('leaves out pots not yet transplanted, later sowings, closed, harvested and unknown plantings', () => {

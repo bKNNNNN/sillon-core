@@ -4,8 +4,12 @@ import type { PlantingLike } from '../plantings/types.js';
 import type { AlertCrop } from './types.js';
 import { inGroundOn } from './frost.js';
 
-/** A crop in open ground on a date, with the most recent date one of its plantings went in. */
-export type InGround = { crop: Crop; since: string };
+/**
+ * A crop in open ground on a date. `since` is the most recent date one of its plantings went in
+ * (the youngest batch, for rules about young plants); `oldest` is the earliest one (the most
+ * advanced batch, for rules about a growth stage such as flowering).
+ */
+export type InGround = { crop: Crop; since: string; oldest: string };
 
 function inGroundOnDate(planting: PlantingLike, date: string): boolean {
   if (planting.status !== 'active') return false;
@@ -14,7 +18,7 @@ function inGroundOnDate(planting: PlantingLike, date: string): boolean {
   return since !== null && since <= date;
 }
 
-/** The crops with an active planting in open ground on `date`, once each, in the order first met. */
+/** The crops with an active planting in open ground on `date`, once each, in the order first met, with their newest and oldest dates. */
 export function cropsInGround(plantings: readonly PlantingLike[], crops: readonly Crop[], date: string): InGround[] {
   const byId = new Map<string, InGround>();
   for (const p of plantings) {
@@ -22,7 +26,12 @@ export function cropsInGround(plantings: readonly PlantingLike[], crops: readonl
     if (!crop || !inGroundOnDate(p, date)) continue;
     const since = inGroundOn(p)!;
     const previous = byId.get(crop.id);
-    if (!previous || since > previous.since) byId.set(crop.id, { crop, since });
+    byId.set(
+      crop.id,
+      previous
+        ? { crop, since: since > previous.since ? since : previous.since, oldest: since < previous.oldest ? since : previous.oldest }
+        : { crop, since, oldest: since },
+    );
   }
   return [...byId.values()];
 }

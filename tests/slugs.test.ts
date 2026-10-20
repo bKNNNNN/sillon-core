@@ -58,6 +58,15 @@ describe('slug rule boundaries (agronomy 8)', () => {
     expect(nightsOf(wet, [planting('ail', { sownOn: '2026-10-15' })])).toEqual([]);
     expect(nightsOf(wet, [planting('salade', { sownOn: '2026-10-21' })])).toEqual(['2026-10-21']);
   });
+
+  it('still warns for a young salad batch next to an older one, in either order', () => {
+    const wet = weather({ rh: 95 });
+    const older = planting('salade', { sownOn: '2026-08-01' });
+    const younger = planting('salade', { sownOn: '2026-10-10' });
+    expect(nightsOf(wet, [older])).toEqual([]);
+    expect(nightsOf(wet, [older, younger])).toEqual(['2026-10-20']);
+    expect(nightsOf(wet, [younger, older])).toEqual(['2026-10-20']);
+  });
 });
 
 describe('slugAlerts', () => {

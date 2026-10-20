@@ -3,7 +3,7 @@ import type { PlantingLike } from '../plantings/types.js';
 import { nightsOf, type HourlyModel, type HourlyWeather } from '../weather/hourly.js';
 import { dayLabel, daysOf, modelsOf, runsOf } from './days.js';
 import { celsius, daysBetween } from './format.js';
-import { cropIn, cropList, cropsInGround, toAlertCrop } from './in-ground.js';
+import { cropIn, cropList, cropsInGround, toAlertCrop, type InGround } from './in-ground.js';
 import type { Alert, Param, ParamSet } from './types.js';
 
 const MERIGNAC = 'Météo-France, fiche climatologique Bordeaux-Mérignac 1991-2020 (catégorie de jours)';
@@ -99,7 +99,7 @@ type RunRule = {
   test: (d: HeatDay) => boolean;
   needed: (p: HeatParams) => number;
   peak: (run: HeatDay[]) => number;
-  crops: (inGround: { crop: Crop; since: string }[], date: string, p: HeatParams) => Crop[];
+  crops: (inGround: InGround[], date: string, p: HeatParams) => Crop[];
   reason: (run: HeatDay[], peak: number, crops: Crop[], today: string, p: HeatParams) => string;
 };
 
@@ -124,7 +124,7 @@ const RULES: RunRule[] = [
     needed: (p) => p.fruitSetNights.value,
     peak: (run) => Math.max(...run.map((d) => d.nightMinC!)),
     crops: (g, date, p) =>
-      g.filter((e) => cropIn(e.crop, HEAT_CROPS.fruitSet) && daysBetween(e.since, date) >= p.tomatoFloweringAfterDays.value).map((e) => e.crop),
+      g.filter((e) => cropIn(e.crop, HEAT_CROPS.fruitSet) && daysBetween(e.oldest, date) >= p.tomatoFloweringAfterDays.value).map((e) => e.crop),
     reason: (run, _peak, _c, today, p) =>
       `Nuits chaudes : ${run.length} nuits de suite à ${celsius(p.hotNightC.value)} ou plus ${fromLabel(run[0]!.date, today)}. La tomate va perdre des fleurs : paille et arrose régulièrement, la nouaison reprendra avec la fraîcheur.`,
   },
@@ -141,7 +141,7 @@ const RULES: RunRule[] = [
 
 /**
  * Agronomy 6: a canicule (any crop in the ground), tomato fruit set after hot nights (tomatoes
- * in the ground long enough to flower), and bolting of salads and spinach after a run of warm
+ * in the ground long enough to flower, judged on the oldest batch), and bolting of salads and spinach after a run of warm
  * days. One alert per run and rule, dated the day the run reaches its length. Heat days alone
  * do not alert: the water balance already reacts to a higher ET0.
  */
