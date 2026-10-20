@@ -47,3 +47,14 @@ export {
   type DailyWeather,
   type WeatherLocation,
 } from './weather/openmeteo.js';
+export {
+  fetchHourly,
+  nightsOf,
+  HOURLY_VARS,
+  HOURLY_MODELS,
+  type HourlyWeather,
+  type HourlyVar,
+  type HourlyModel,
+  type HourlyOptions,
+  type Night,
+} from './weather/hourly.js';
