@@ -24,6 +24,10 @@ export function parseCrops(yamlText: string): Crop[] {
     }
   });
 
+  for (const c of crops) {
+    if (c.kcStages?.value.method === 'gdd-fraction' && !c.gdd) errors.push(`${c.id}: kcStages gdd-fraction needs gdd`);
+  }
+
   const seen = new Set<string>();
   for (const c of crops) {
     if (seen.has(c.id)) errors.push(`${c.id}: duplicate id`);
