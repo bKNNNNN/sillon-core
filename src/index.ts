@@ -94,3 +94,14 @@ export {
 } from './alerts/last-frost.js';
 export { daysOf, dayLabel, runsOf, modelsOf, type DayStats } from './alerts/days.js';
 export { cropsInGround, cropIn, type InGround } from './alerts/in-ground.js';
+export {
+  soilSowingAlerts,
+  soilStatus,
+  potatoStatus,
+  SOIL_TEMP_PARAMS,
+  type SoilStatus,
+  type SoilTempAlert,
+  type SoilTempInputs,
+  type SoilTempOptions,
+  type SoilTempParams,
+} from './alerts/soil-temp.js';
