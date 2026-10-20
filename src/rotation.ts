@@ -49,27 +49,41 @@ const SOIL_PH_FAMILIES: ReadonlySet<string> = new Set(['brassicacees']);
 export type RotationAdvice = {
   warning: string;
   family: string;
-  /** The latest season the family grew on this bed: a previous one, or this one for a different crop sown earlier. */
+  /** The latest season the family grew on this bed: a previous one, or this one for a different crop already finished. */
   lastYear: number;
   rotationYears: number;
   /** Show the soil pH advice card next to the warning. */
   soilPhAdvice: boolean;
 };
 
-type History = Pick<PlantingLike, 'species' | 'sownOn'>[];
+/** A past planting on the bed. `status` and `harvestedOn` tell a finished crop from one still growing. */
+type History = (Pick<PlantingLike, 'species' | 'sownOn'> & Partial<Pick<PlantingLike, 'status' | 'harvestedOn'>>)[];
+type Past = History[number];
 
 /** A season is the calendar year of the sowing date. */
 const seasonOf = (date: string): number => Number(date.slice(0, 4));
 
 /**
- * A past planting counts against the new one when it grew in a previous season within the rotation,
- * or earlier in the same season as a different crop (summer cabbage then winter cabbage).
- * A resowing or succession of the same crop in one season never counts.
+ * A same-season planting was off the soil before the new sowing: harvested on or before that date,
+ * or closed (done, failed) with no harvest date.
  */
-function counts(past: Crop, sownOn: string, crop: Crop, newSownOn: string, years: number): boolean {
+function finishedBefore(past: Past, newSownOn: string): boolean {
+  if (past.harvestedOn) return past.harvestedOn <= newSownOn;
+  return past.status === 'done' || past.status === 'failed';
+}
+
+/**
+ * A past planting counts against the new one when it grew in a previous season within the rotation,
+ * or earlier in the same season as a different crop already finished before the new sowing
+ * (potatoes after harvested tomatoes). Crops of one family growing side by side in one season
+ * (garlic and leek) and a resowing of the same crop never count.
+ */
+function counts(past: Past, pastCrop: Crop, crop: Crop, newSownOn: string, years: number): boolean {
   const season = seasonOf(newSownOn);
-  const year = seasonOf(sownOn);
-  if (year === season) return past.id !== crop.id && sownOn < newSownOn;
+  const year = seasonOf(past.sownOn);
+  if (year === season) {
+    return pastCrop.id !== crop.id && past.sownOn < newSownOn && finishedBefore(past, newSownOn);
+  }
   return year < season && year > season - years;
 }
 
@@ -91,7 +105,7 @@ export function rotationAdvice(history: History, species: string, sownOn: string
   const seasons = history
     .filter((h) => {
       const past = getCrop(crops, h.species);
-      return past?.family === family && !isShortCrop(past) && counts(past, h.sownOn, crop, sownOn, years);
+      return past?.family === family && !isShortCrop(past) && counts(h, past, crop, sownOn, years);
     })
     .map((h) => seasonOf(h.sownOn));
   if (seasons.length === 0) return null;
@@ -106,7 +120,7 @@ export function rotationAdvice(history: History, species: string, sownOn: string
   };
 }
 
-/** The warning text alone, or null. Two sowings of the same crop in one season never warn. */
+/** The warning text alone, or null. Crops of one family growing together in one season never warn. */
 export function rotationWarning(history: History, species: string, sownOn: string, crops: Crop[]): string | null {
   return rotationAdvice(history, species, sownOn, crops)?.warning ?? null;
 }

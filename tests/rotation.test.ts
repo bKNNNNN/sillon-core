@@ -32,15 +32,38 @@ describe('rotationWarning', () => {
     expect(rotationWarning([{ species: 'chou', sownOn: '2026-03-01' }], 'chou', '2026-06-15', crops)).toBeNull();
   });
 
-  it('warns for a different crop of the same family earlier in the same year', () => {
-    expect(rotationWarning([{ species: 'ail', sownOn: '2026-02-10' }], 'poireau', '2026-04-01', crops))
-      .toBe('Amaryllidacées déjà sur cette planche en 2026 : pense à faire tourner.');
-    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01' }], 'pomme-de-terre', '2026-07-20', crops))
+  it('garlic then leek in one season stays silent', () => {
+    expect(rotationWarning([{ species: 'ail', sownOn: '2026-02-10', status: 'active' }], 'poireau', '2026-04-01', crops)).toBeNull();
+    expect(rotationWarning([{ species: 'ail', sownOn: '2026-02-10' }], 'poireau', '2026-04-01', crops)).toBeNull();
+  });
+
+  it('warns for the same family in an earlier season', () => {
+    expect(rotationWarning([{ species: 'ail', sownOn: '2025-02-10', status: 'done', harvestedOn: '2025-07-01' }], 'poireau', '2026-04-01', crops))
+      .toBe('Amaryllidacées déjà sur cette planche en 2025 : pense à faire tourner.');
+  });
+
+  it('warns for the same family in the same season when the previous one was harvested before sowing', () => {
+    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01', status: 'done', harvestedOn: '2026-07-10' }], 'pomme-de-terre', '2026-07-20', crops))
       .toBe('Solanacées déjà sur cette planche en 2026 : pense à faire tourner.');
+    expect(rotationWarning([{ species: 'ail', sownOn: '2026-02-10', status: 'active', harvestedOn: '2026-04-01' }], 'poireau', '2026-04-01', crops))
+      .toBe('Amaryllidacées déjà sur cette planche en 2026 : pense à faire tourner.');
+  });
+
+  it('a same-season planting closed as done or failed without a harvest date counts as finished', () => {
+    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01', status: 'failed' }], 'pomme-de-terre', '2026-07-20', crops)).not.toBeNull();
+    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01', status: 'done' }], 'pomme-de-terre', '2026-07-20', crops)).not.toBeNull();
+  });
+
+  it('a same-season planting harvested after the new sowing was still growing and stays silent', () => {
+    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01', status: 'done', harvestedOn: '2026-08-01' }], 'pomme-de-terre', '2026-07-20', crops)).toBeNull();
+  });
+
+  it('the same crop in one season stays silent even once harvested', () => {
+    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01', status: 'done', harvestedOn: '2026-06-01' }], 'tomate', '2026-07-20', crops)).toBeNull();
   });
 
   it('a same-year crop sown after the new one does not warn', () => {
-    expect(rotationWarning([{ species: 'poireau', sownOn: '2026-05-01' }], 'ail', '2026-02-10', crops)).toBeNull();
+    expect(rotationWarning([{ species: 'poireau', sownOn: '2026-05-01', status: 'failed' }], 'ail', '2026-02-10', crops)).toBeNull();
   });
 
   it('two spinach sowings in the same season give no warning', () => {

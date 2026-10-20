@@ -61,21 +61,25 @@ describe('whatsNext on sillon-cultures v0.2.0', () => {
 });
 
 describe('rotation on sillon-cultures v0.2.0', () => {
-  it('warns for winter cabbage after summer cabbage on the same bed in one year', () => {
-    const advice = rotationAdvice([{ species: 'chou-ete', sownOn: '2026-03-01' }], 'chou-hiver', '2026-06-15', crops);
+  it('warns for winter cabbage after a harvested summer cabbage on the same bed in one year', () => {
+    const advice = rotationAdvice([{ species: 'chou-ete', sownOn: '2026-03-01', status: 'done', harvestedOn: '2026-06-10' }], 'chou-hiver', '2026-06-15', crops);
     expect(advice).toMatchObject({ family: 'brassicacees', lastYear: 2026, rotationYears: 4, soilPhAdvice: true });
     expect(advice?.warning).toBe('Brassicacées déjà sur cette planche en 2026 : pense à faire tourner.');
   });
 
-  it('warns for late potatoes after tomatoes and for garlic after onions in one year', () => {
-    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01' }], 'pomme-de-terre', '2026-07-20', crops))
+  it('warns for late potatoes after harvested tomatoes and for garlic after harvested onions in one year', () => {
+    expect(rotationWarning([{ species: 'tomate', sownOn: '2026-03-01', status: 'done', harvestedOn: '2026-07-15' }], 'pomme-de-terre', '2026-07-20', crops))
       .toBe('Solanacées déjà sur cette planche en 2026 : pense à faire tourner.');
-    expect(rotationWarning([{ species: 'oignon', sownOn: '2026-03-01' }], 'ail', '2026-10-18', crops))
+    expect(rotationWarning([{ species: 'oignon', sownOn: '2026-03-01', status: 'done', harvestedOn: '2026-08-20' }], 'ail', '2026-10-18', crops))
       .toBe('Amaryllidacées déjà sur cette planche en 2026 : pense à faire tourner.');
   });
 
+  it('summer and winter cabbage growing side by side stay silent', () => {
+    expect(rotationWarning([{ species: 'chou-ete', sownOn: '2026-03-01', status: 'active' }], 'chou-hiver', '2026-06-15', crops)).toBeNull();
+  });
+
   it('a resowing of the same crop in one year stays silent, alias included', () => {
-    expect(rotationWarning([{ species: 'chou', sownOn: '2026-03-01' }], 'chou-ete', '2026-05-10', crops)).toBeNull();
+    expect(rotationWarning([{ species: 'chou', sownOn: '2026-03-01', status: 'done', harvestedOn: '2026-05-01' }], 'chou-ete', '2026-05-10', crops)).toBeNull();
     expect(rotationWarning([{ species: 'pomme-de-terre', sownOn: '2026-03-20' }], 'pomme-de-terre', '2026-07-20', crops)).toBeNull();
   });
 });
