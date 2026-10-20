@@ -167,9 +167,35 @@ describe('whatsNext', () => {
     ]);
   });
 
-  it('a bought plant does not count as a sowing', () => {
-    const r = whatsNext([{ ...radis, successionDays: undefined }], [{ ...basePlanting, method: 'bought' as const, sownOn: '2026-04-01' }], '2026-04-08');
+  it('a bought plant does not count as a sowing for a crop with a transplant window', () => {
+    const c: Crop = { ...radis, successionDays: undefined, transplant: { value: { from: 40, to: 45 }, source: 's' } };
+    const r = whatsNext([c], [{ ...basePlanting, method: 'bought' as const, sownOn: '2026-04-01' }], '2026-04-08');
     expect(r).toEqual([expect.objectContaining({ action: 'sow_direct', doneOn: [] })]);
+  });
+
+  it('a bought plant counts for the direct window of a crop with no transplant window', () => {
+    const ail: Crop = { ...baseCrop, id: 'ail', name: 'Ail', sowDirect: { value: { from: 41, to: 49 }, estimate: true } };
+    const bought = { ...basePlanting, species: 'ail', method: 'bought' as const, sownOn: '2026-10-18' };
+    expect(whatsNext([ail], [bought], '2026-10-21')).toEqual([
+      expect.objectContaining({
+        action: 'sow_direct',
+        doneOn: ['2026-10-18'],
+        reason: 'Fenêtre de semis direct : semaines 41 à 49. Déjà planté le 18 oct.',
+      }),
+    ]);
+  });
+
+  it('a bought plant never counts for the under-cover window', () => {
+    const c: Crop = { ...baseCrop, sowUnderCover: { value: { from: 10, to: 30 }, source: 's' }, sowDirect: { value: { from: 10, to: 30 }, source: 's' } };
+    const r = whatsNext([c], [{ ...basePlanting, method: 'bought' as const, sownOn: '2026-04-01' }], '2026-04-08');
+    expect(r.map((a) => [a.action, a.doneOn])).toEqual([['sow_under_cover', []], ['sow_direct', ['2026-04-01']]]);
+  });
+
+  it('mixed sowing and bought plants on a direct window keep the sowing verb', () => {
+    const ail: Crop = { ...baseCrop, id: 'ail', sowDirect: { value: { from: 41, to: 49 }, estimate: true } };
+    const p = { ...basePlanting, species: 'ail' };
+    const r = whatsNext([ail], [{ ...p, method: 'bought' as const, sownOn: '2026-10-12' }, { ...p, method: 'direct' as const, sownOn: '2026-10-18' }], '2026-10-21');
+    expect(r[0]).toMatchObject({ doneOn: ['2026-10-12', '2026-10-18'], reason: 'Fenêtre de semis direct : semaines 41 à 49. Déjà semé le 12 oct. et le 18 oct.' });
   });
 
   it('proposes nothing out of season', () => {

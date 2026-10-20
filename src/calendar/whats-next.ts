@@ -45,6 +45,16 @@ function occurrenceStart(window: WeekWindow, today: string): string {
 
 const SOW_METHOD: Record<Sow, PlantingLike['method']> = { sow_under_cover: 'pot', sow_direct: 'direct' };
 
+/**
+ * A bought plant (garlic cloves, seed potatoes) counts for the direct window of a crop that has
+ * no transplant window. Otherwise it counts only for the transplant window.
+ */
+const countsBought = (crop: Crop, kind: Sow): boolean => kind === 'sow_direct' && !crop.transplant;
+
+/** "planté" when every done date comes from a bought plant, "semé" otherwise. */
+const doneVerb = (done: CalendarPlanting[]): 'semé' | 'planté' =>
+  done.length > 0 && done.every((p) => p.method === 'bought') ? 'planté' : 'semé';
+
 /** Sorted unique dates. */
 const dates = (list: (string | null | undefined)[]): string[] =>
   [...new Set(list.filter((d): d is string => Boolean(d)))].sort();
@@ -64,14 +74,14 @@ function sowActions(crop: Crop, mine: CalendarPlanting[], week: number, today: s
     ['sow_under_cover', 'semis sous abri', crop.sowUnderCover],
     ['sow_direct', 'semis direct', crop.sowDirect],
   ];
-  const sowings = mine.filter((p) => p.method !== 'bought');
   const out: WeeklyAction[] = [];
   let succeeded = false;
   for (const [kind, label, w] of windows) {
     const current = w && currentWindow(week, w.value);
     if (!w || !current) continue;
     const start = occurrenceStart(current, today);
-    const inOccurrence = sowings.filter((p) => p.sownOn >= start);
+    const bought = countsBought(crop, kind);
+    const inOccurrence = mine.filter((p) => p.sownOn >= start && (bought || p.method !== 'bought'));
     const all = dates(inOccurrence.map((p) => p.sownOn));
     const reason = windowReason(label, current);
     const last = all[all.length - 1];
@@ -88,8 +98,9 @@ function sowActions(crop: Crop, mine: CalendarPlanting[], week: number, today: s
       out.push(action(crop, 'succession', w, text, all));
       continue;
     }
-    const done = dates(inOccurrence.filter((p) => !p.method || p.method === SOW_METHOD[kind]).map((p) => p.sownOn));
-    out.push(action(crop, kind, w, `${reason}${doneSuffix('semé', done)}`, done));
+    const matching = inOccurrence.filter((p) => !p.method || p.method === SOW_METHOD[kind] || p.method === 'bought');
+    const done = dates(matching.map((p) => p.sownOn));
+    out.push(action(crop, kind, w, `${reason}${doneSuffix(doneVerb(matching), done)}`, done));
   }
   return out;
 }
