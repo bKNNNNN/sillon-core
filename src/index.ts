@@ -130,3 +130,15 @@ export {
   type WaterAnchor,
   type WaterBalance,
 } from './alerts/water-balance.js';
+export {
+  waterAdvice,
+  waterAlerts,
+  type WaterBed,
+  type BedWaterInput,
+  type WaterLevel,
+  type WaterStatus,
+  type CropWater,
+  type WaterInputs,
+  type BedWaterAdvice,
+  type WaterAlert,
+} from './alerts/water-advice.js';

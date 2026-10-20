@@ -7,9 +7,9 @@ import { celsius, daysBetween, frenchDate, weekday } from './format.js';
 import { inGroundOn } from './frost.js';
 import type { Alert, AlertCrop, Param, ParamSet } from './types.js';
 
-const HUTTON = 'AHDB, Hutton Criteria (système national d’alerte mildiou de la pomme de terre, 2017)';
+const HUTTON = "AHDB, Hutton Criteria (système national d'alerte mildiou de la pomme de terre, 2017)";
 const SMITH = 'Kitchen Garden et CPM, Smith Period contre Hutton Criteria (11 h contre 6 h)';
-const BSV = 'BSV Maraîchage Sud Nouvelle-Aquitaine n° 1, 1er mars 2024 (risque d’avril à octobre)';
+const BSV = "BSV Maraîchage Sud Nouvelle-Aquitaine n° 1, 1er mars 2024 (risque d'avril à octobre)";
 const REVIEW = 'Revue agronomique Sillon 3.1';
 
 /** Mildew thresholds from agronomy 3.1. Hutton and Smith are sourced; the day boundary and the de-duplication are estimates. */
