@@ -92,3 +92,5 @@ export {
   type CalibrationRow,
   type CalibrationOptions,
 } from './alerts/last-frost.js';
+export { daysOf, dayLabel, runsOf, modelsOf, type DayStats } from './alerts/days.js';
+export { cropsInGround, cropIn, type InGround } from './alerts/in-ground.js';
