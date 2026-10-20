@@ -13,7 +13,7 @@ export {
   type FirstHarvestPlanting,
 } from './forecast/first-harvest.js';
 export { whatsNext, type WeeklyAction, type CalendarPlanting } from './calendar/whats-next.js';
-export { rotationWarning, FAMILY_LABELS } from './rotation.js';
+export { rotationWarning, rotationAdvice, ROTATION_RULES, FAMILY_LABELS, type RotationAdvice } from './rotation.js';
 export {
   germinationOutlook,
   seedLotOutlook,
