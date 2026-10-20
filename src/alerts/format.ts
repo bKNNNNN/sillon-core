@@ -35,6 +35,13 @@ export function weekday(date: string): string {
   return WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!;
 }
 
+/** The evening to act on, from the night's distance: "ce soir", "demain soir", "le jeudi soir". */
+export function eveningOf(night: string, daysAhead: number): string {
+  if (daysAhead <= 0) return 'ce soir';
+  if (daysAhead === 1) return 'demain soir';
+  return `le ${weekday(night)} soir`;
+}
+
 /** "du jeudi 22 au vendredi 23 octobre", or with both months when the night crosses one. */
 export function nightSpan(evening: string, morning: string): string {
   const sameMonth = evening.slice(0, 7) === morning.slice(0, 7);

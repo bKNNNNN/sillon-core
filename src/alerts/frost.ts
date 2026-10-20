@@ -3,7 +3,7 @@ import type { Crop, FrostClass } from '../crops/schema.js';
 import { addDays } from '../dates.js';
 import type { PlantingLike } from '../plantings/types.js';
 import { nightsOf, type HourlyModel, type HourlyWeather } from '../weather/hourly.js';
-import { celsius, daysBetween, nightSpan } from './format.js';
+import { celsius, daysBetween, eveningOf, nightSpan } from './format.js';
 import type { Alert, AlertCrop, FrostLevel, Param, ParamSet } from './types.js';
 
 const FROST_SPEC = 'Spec Sillon et revue agronomique 2.2 (marges sous abri contre gel au sol)';
@@ -196,11 +196,11 @@ function exposedCrops(plantings: readonly PlantingLike[], crops: readonly Crop[]
 const lower = (name: string) => name.charAt(0).toLowerCase() + name.slice(1);
 const toAlertCrop = (e: Exposed): AlertCrop => ({ species: e.crop.id, name: e.crop.name, frostClass: e.frostClass, frostClassFrom: e.from });
 
-function frostAdvice(exposed: Exposed[]): string {
+function frostAdvice(exposed: Exposed[], evening: string): string {
   const hill = exposed.filter((e) => e.crop.id === 'pomme-de-terre');
   const cover = exposed.filter((e) => e.crop.id !== 'pomme-de-terre');
   const parts: string[] = [];
-  if (cover.length > 0) parts.push(`Couvre d'un voile ce soir : ${cover.map((e) => lower(e.crop.name)).join(', ')}.`);
+  if (cover.length > 0) parts.push(`Couvre d'un voile ${evening} : ${cover.map((e) => lower(e.crop.name)).join(', ')}.`);
   if (hill.length > 0) parts.push('Butte les pommes de terre levées : la terre protège les feuilles.');
   parts.push("Arrose le sol l'après-midi : un sol humide garde mieux la chaleur.");
   return parts.join(' ');
@@ -220,7 +220,7 @@ export function frostAlerts(nights: readonly FrostNight[], plantings: readonly P
         date: n.night,
         daysAhead: n.daysAhead,
         crops: exposed.map(toAlertCrop),
-        reason: `${n.reason} ${frostAdvice(exposed)}`,
+        reason: `${n.reason} ${frostAdvice(exposed, eveningOf(n.night, n.daysAhead))}`,
         estimate: n.estimate,
         inputs: n.inputs,
       },
@@ -249,7 +249,7 @@ export function chillAlerts(nights: readonly FrostNight[], plantings: readonly P
       date: n.night,
       daysAhead: n.daysAhead,
       crops: [toAlertCrop(e)],
-      reason: `Nuit froide pour les jeunes plants de ${lower(e.crop.name)} ${nightSpan(n.night, addDays(n.night, 1))} (mini prévue ${celsius(n.inputs.tminC)}, seuil ${celsius(e.crop.chillC!.value)}). Couvre-les d'un voile ce soir.`,
+      reason: `Nuit froide pour les jeunes plants de ${lower(e.crop.name)} ${nightSpan(n.night, addDays(n.night, 1))} (mini prévue ${celsius(n.inputs.tminC)}, seuil ${celsius(e.crop.chillC!.value)}). Couvre-les d'un voile ${eveningOf(n.night, n.daysAhead)}.`,
       estimate: true,
       inputs: { ...n.inputs, chillC: e.crop.chillC, params: { ...n.inputs.params, ...CHILL_PARAMS } },
     }));

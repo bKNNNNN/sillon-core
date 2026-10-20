@@ -131,8 +131,19 @@ describe('frostAlerts', () => {
     expect(alerts[0]).toMatchObject({ kind: 'frost', level: 'fort', date: '2026-10-22', daysAhead: 2, estimate: true });
     expect(alerts[0]!.crops.map((c) => c.species)).toEqual(['tomate', 'courgette']);
     expect(alerts[0]!.reason).toBe(
-      "Gel possible la nuit du jeudi 22 au vendredi 23 octobre (mini prévue 1 °C, ciel nuageux, du vent). Couvre d'un voile ce soir : tomate, courgette. Arrose le sol l'après-midi : un sol humide garde mieux la chaleur.",
+      "Gel possible la nuit du jeudi 22 au vendredi 23 octobre (mini prévue 1 °C, ciel nuageux, du vent). Couvre d'un voile le jeudi soir : tomate, courgette. Arrose le sol l'après-midi : un sol humide garde mieux la chaleur.",
     );
+  });
+
+  it('names the evening to cover on from how far ahead the night is', () => {
+    const coverOn = (today: string) => frostAlerts(frostNights(night('2026-10-22', { tmin: 1 }), { today }), [planting('tomate')], crops)[0]!;
+    expect(coverOn('2026-10-22')).toMatchObject({ daysAhead: 0 });
+    expect(coverOn('2026-10-22').reason).toContain("Couvre d'un voile ce soir : tomate.");
+    expect(coverOn('2026-10-21')).toMatchObject({ daysAhead: 1 });
+    expect(coverOn('2026-10-21').reason).toContain("Couvre d'un voile demain soir : tomate.");
+    expect(coverOn('2026-10-20')).toMatchObject({ daysAhead: 2 });
+    expect(coverOn('2026-10-20').reason).toContain("Couvre d'un voile le jeudi soir : tomate.");
+    expect(coverOn('2026-10-20').reason).not.toContain('ce soir');
   });
 
   it('tells to hill potatoes instead of covering them', () => {
@@ -204,10 +215,17 @@ describe('chillAlerts', () => {
     const [a] = chillAlerts(nights(4.5), [young], crops);
     expect(a).toMatchObject({ kind: 'chill', level: 'froid', date: '2026-10-22', estimate: true });
     expect(a!.reason).toBe(
-      "Nuit froide pour les jeunes plants de basilic du jeudi 22 au vendredi 23 octobre (mini prévue 4,5 °C, seuil 5 °C). Couvre-les d'un voile ce soir.",
+      "Nuit froide pour les jeunes plants de basilic du jeudi 22 au vendredi 23 octobre (mini prévue 4,5 °C, seuil 5 °C). Couvre-les d'un voile le jeudi soir.",
     );
     expect(a!.inputs).toMatchObject({ chillC: { value: 5, source: 'Frontiers 2023' }, tminC: 4.5 });
     expect(a!.inputs.params.chillRecentDays.value).toBe(30);
+  });
+
+  it('names the evening to cover the basil on from how far ahead the night is', () => {
+    const coverOn = (today: string) => chillAlerts(assessNights(night('2026-10-22', { tmin: 4.5 }), { today }), [young], crops)[0]!.reason;
+    expect(coverOn('2026-10-22')).toMatch(/Couvre-les d'un voile ce soir\.$/);
+    expect(coverOn('2026-10-21')).toMatch(/Couvre-les d'un voile demain soir\.$/);
+    expect(coverOn('2026-10-20')).toMatch(/Couvre-les d'un voile le jeudi soir\.$/);
   });
 
   it('fires at the threshold and not above it', () => {
