@@ -142,3 +142,46 @@ export {
   type BedWaterAdvice,
   type WaterAlert,
 } from './alerts/water-advice.js';
+export { daysOf, dayLabel, runsOf, modelsOf, type DayStats } from './alerts/days.js';
+export { cropsInGround, cropIn, type InGround } from './alerts/in-ground.js';
+export {
+  soilSowingAlerts,
+  soilStatus,
+  potatoStatus,
+  SOIL_TEMP_PARAMS,
+  type SoilStatus,
+  type SoilTempAlert,
+  type SoilTempInputs,
+  type SoilTempOptions,
+  type SoilTempParams,
+} from './alerts/soil-temp.js';
+export {
+  assessHeatDays,
+  heatAlerts,
+  HEAT_PARAMS,
+  HEAT_CROPS,
+  type HeatDay,
+  type HeatLevel,
+  type HeatInputs,
+  type HeatAlert,
+  type HeatOptions,
+  type HeatParams,
+} from './alerts/heat.js';
+export {
+  slugAlerts,
+  SLUG_PARAMS,
+  SLUG_CROPS,
+  type SlugAlert,
+  type SlugInputs,
+  type SlugOptions,
+  type SlugParams,
+} from './alerts/slugs.js';
+export {
+  windAlerts,
+  WIND_PARAMS,
+  WIND_CROPS,
+  type WindAlert,
+  type WindInputs,
+  type WindOptions,
+  type WindParams,
+} from './alerts/wind.js';
