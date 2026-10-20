@@ -35,6 +35,36 @@ const firstHarvests = z.union([
 ]);
 const cropId = z.string().regex(/^[a-z][a-z0-9-]*$/);
 
+/** How a crop takes cold: `tender` is damaged by a light frost, `semi` only by a real one, `hardy` is not alerted. */
+const frostClass = z.enum(['tender', 'semi', 'hardy']);
+/** Germination soil temperatures in °C (Harrington). The optimum is optional, both bounds or neither. */
+const germSoil = z
+  .object({ min: z.number(), optLow: z.number().optional(), optHigh: z.number().optional(), max: z.number() })
+  .strict()
+  .refine((g) => (g.optLow === undefined) === (g.optHigh === undefined), {
+    message: 'optLow and optHigh go together',
+  })
+  .refine((g) => g.min < g.max, { message: 'min must be below max' })
+  .refine(
+    (g) => g.optLow === undefined || g.optHigh === undefined || (g.min <= g.optLow && g.optLow <= g.optHigh && g.optHigh <= g.max),
+    { message: 'need min <= optLow <= optHigh <= max' },
+  );
+const stageDays = z.number().int().positive();
+const fraction = z.number().gt(0).lt(1);
+/**
+ * Crop coefficient stages, labelled by method: FAO-56 table 11 stage lengths in days,
+ * or the progress fraction of the degree-day total at which each stage starts.
+ */
+const kcStages = z.discriminatedUnion('method', [
+  z
+    .object({ method: z.literal('fao56-table11'), initDays: stageDays, devDays: stageDays, midDays: stageDays, lateDays: stageDays })
+    .strict(),
+  z
+    .object({ method: z.literal('gdd-fraction'), devFrom: fraction, midFrom: fraction, lateFrom: fraction })
+    .strict()
+    .refine((k) => k.devFrom < k.midFrom && k.midFrom < k.lateFrom, { message: 'need devFrom < midFrom < lateFrom' }),
+]);
+
 export const cropSchema = z
   .object({
     id: cropId,
@@ -52,6 +82,15 @@ export const cropSchema = z
     spacingCm: sourced(z.object({ inRow: positive, betweenRows: positive }).strict()).optional(),
     kc: sourced(z.object({ initial: positive, mid: positive, late: positive }).strict()).optional(),
     frostSensitive: z.boolean(),
+    frostClass: sourced(frostClass).optional(),
+    /** Night minimum in °C at or below which a young transplant suffers chilling injury (basil). */
+    chillC: sourced(z.number()).optional(),
+    /** Effective rooting depth in m used for the water balance (FAO-56 table 22). */
+    rootDepthM: sourced(z.number().positive().max(3)).optional(),
+    /** Fraction of the available water the crop can use before stress (FAO-56 table 22 `p`). */
+    depletionP: sourced(z.number().gt(0).lt(1)).optional(),
+    germSoilC: sourced(germSoil).optional(),
+    kcStages: sourced(kcStages).optional(),
     goodCompanions: z.array(z.string()),
     badCompanions: z.array(z.string()),
     seedLifespanYears: sourced(positive).optional(),
@@ -65,6 +104,9 @@ export type WeekWindow = z.infer<typeof weekWindow>;
 export type WeekWindows = z.infer<typeof weekWindows>;
 export type FirstHarvestDays = z.infer<typeof firstHarvest>;
 export type FirstHarvestDaysList = z.infer<typeof firstHarvests>;
+export type FrostClass = z.infer<typeof frostClass>;
+export type GermSoilC = z.infer<typeof germSoil>;
+export type KcStages = z.infer<typeof kcStages>;
 
 export function windowsOf(windows: WeekWindows): WeekWindow[] {
   return Array.isArray(windows) ? windows : [windows];

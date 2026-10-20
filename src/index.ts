@@ -34,6 +34,9 @@ export {
   type WeekWindows,
   type FirstHarvestDays,
   type FirstHarvestDaysList,
+  type FrostClass,
+  type GermSoilC,
+  type KcStages,
   type Sourced,
 } from './crops/schema.js';
 export { parseCrops, getCrop } from './crops/parse.js';
