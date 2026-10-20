@@ -16,7 +16,7 @@ Le moteur agronomique de Sillon, en TypeScript. Il ne contient que des calculs :
 ## Installation
 
 ```sh
-pnpm add github:bKNNNNN/sillon-core#v0.4.0
+pnpm add github:bKNNNNN/sillon-core#v0.5.0
 ```
 
 Depuis pnpm 10, les dépendances git ne lancent leur script de build que si tu l'autorises. Ajoute dans le `pnpm-workspace.yaml` de ton projet :
