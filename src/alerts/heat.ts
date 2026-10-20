@@ -135,7 +135,7 @@ const RULES: RunRule[] = [
     peak: maxOf,
     crops: (g) => g.filter((e) => cropIn(e.crop, HEAT_CROPS.bolting)).map((e) => e.crop),
     reason: (run, _peak, crops, today, p) =>
-      `Chaleur durable : ${run.length} jours de suite à ${celsius(p.boltingC.value)} ou plus ${fromLabel(run[0]!.date, today)}. ${capital(cropList(crops))} vont monter en graines : récolte les plus avancées, ombre les autres.`,
+      `Chaleur durable : ${run.length} jours de suite à ${celsius(p.boltingC.value)} ou plus ${fromLabel(run[0]!.date, today)}. ${capital(cropList(crops))} ${crops.length === 1 ? 'va' : 'vont'} monter en graines : récolte les plus avancées, ombre les autres.`,
   },
 ];
 

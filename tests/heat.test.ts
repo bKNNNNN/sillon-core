@@ -114,6 +114,8 @@ describe('heatAlerts', () => {
     expect(alerts[0]!.reason).toBe(
       "Chaleur durable : 3 jours de suite à 27 °C ou plus à partir d'aujourd'hui. Salade, épinard vont monter en graines : récolte les plus avancées, ombre les autres.",
     );
+    const single = heatAlerts(weather(TODAY, [{ max: 27 }, { max: 28 }, { max: 27 }, { max: 22 }]), [planting('salade')], crops, { today: TODAY });
+    expect(single[0]!.reason).toContain('Salade va monter en graines');
     expect(heatAlerts(weather(TODAY, [{ max: 27 }, { max: 28 }, { max: 22 }]), [planting('salade')], crops, { today: TODAY })).toEqual([]);
   });
 
