@@ -232,10 +232,18 @@ export function frostAlerts(nights: readonly FrostNight[], plantings: readonly P
  * Chilling injury without frost: a crop with `chillC` (basil), in open ground for less than
  * `chillRecentDays`, on a night at or below `chillC`. Nights already covered by a frost alert for
  * that crop are left to the frost alert.
+ *
+ * Takes the hours, not nights: a chill night is usually quiet (`level: null`), and `frostNights`
+ * drops quiet nights, so this function runs `assessNights` itself with the same options.
  */
-export function chillAlerts(nights: readonly FrostNight[], plantings: readonly PlantingLike[], crops: readonly Crop[]): ChillAlert[] {
+export function chillAlerts(
+  hours: readonly HourlyWeather[],
+  options: NightOptions,
+  plantings: readonly PlantingLike[],
+  crops: readonly Crop[],
+): ChillAlert[] {
   const recent = CHILL_PARAMS.chillRecentDays.value;
-  return nights.flatMap((n) => {
+  return assessNights(hours, options).flatMap((n) => {
     const young = exposedCrops(plantings, crops, n.night).filter(
       (e) =>
         e.crop.chillC !== undefined &&

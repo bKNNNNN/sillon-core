@@ -209,10 +209,10 @@ describe('frostClassOf', () => {
 
 describe('chillAlerts', () => {
   const young = planting('basilic', { method: 'bought', sownOn: '2026-10-05' });
-  const nights = (tmin: number, cloud = 80, wind = 15) => assessNights(night('2026-10-22', { tmin, cloud, wind }), { today: TODAY });
+  const hours = (tmin: number, cloud = 80, wind = 15) => night('2026-10-22', { tmin, cloud, wind });
 
   it('warns for a young basil on a cold night without frost', () => {
-    const [a] = chillAlerts(nights(4.5), [young], crops);
+    const [a] = chillAlerts(hours(4.5), { today: TODAY }, [young], crops);
     expect(a).toMatchObject({ kind: 'chill', level: 'froid', date: '2026-10-22', estimate: true });
     expect(a!.reason).toBe(
       "Nuit froide pour les jeunes plants de basilic du jeudi 22 au vendredi 23 octobre (mini prévue 4,5 °C, seuil 5 °C). Couvre-les d'un voile le jeudi soir.",
@@ -222,29 +222,42 @@ describe('chillAlerts', () => {
   });
 
   it('names the evening to cover the basil on from how far ahead the night is', () => {
-    const coverOn = (today: string) => chillAlerts(assessNights(night('2026-10-22', { tmin: 4.5 }), { today }), [young], crops)[0]!.reason;
+    const coverOn = (today: string) => chillAlerts(night('2026-10-22', { tmin: 4.5 }), { today }, [young], crops)[0]!.reason;
     expect(coverOn('2026-10-22')).toMatch(/Couvre-les d'un voile ce soir\.$/);
     expect(coverOn('2026-10-21')).toMatch(/Couvre-les d'un voile demain soir\.$/);
     expect(coverOn('2026-10-20')).toMatch(/Couvre-les d'un voile le jeudi soir\.$/);
   });
 
   it('fires at the threshold and not above it', () => {
-    expect(chillAlerts(nights(5), [young], crops)).toHaveLength(1);
-    expect(chillAlerts(nights(5.1), [young], crops)).toEqual([]);
+    expect(chillAlerts(hours(5), { today: TODAY }, [young], crops)).toHaveLength(1);
+    expect(chillAlerts(hours(5.1), { today: TODAY }, [young], crops)).toEqual([]);
   });
 
   it('stays silent for a basil planted 30 days or more before the night', () => {
-    expect(chillAlerts(nights(3), [planting('basilic', { method: 'bought', sownOn: '2026-09-22' })], crops)).toEqual([]);
-    expect(chillAlerts(nights(3), [planting('basilic', { method: 'bought', sownOn: '2026-09-23' })], crops)).toHaveLength(1);
+    expect(chillAlerts(hours(3), { today: TODAY }, [planting('basilic', { method: 'bought', sownOn: '2026-09-22' })], crops)).toEqual([]);
+    expect(chillAlerts(hours(3), { today: TODAY }, [planting('basilic', { method: 'bought', sownOn: '2026-09-23' })], crops)).toHaveLength(1);
   });
 
   it('leaves the night to the frost alert when it already covers the crop', () => {
-    expect(chillAlerts(nights(1.5), [young], crops)).toEqual([]);
-    expect(chillAlerts(nights(4, 10, 5), [young], crops)).toEqual([]);
+    expect(chillAlerts(hours(1.5), { today: TODAY }, [young], crops)).toEqual([]);
+    expect(chillAlerts(hours(4, 10, 5), { today: TODAY }, [young], crops)).toEqual([]);
+  });
+
+  it('reads the hours itself, so a quiet night that frostNights drops still warns the basil', () => {
+    const cloudy = hours(4.5);
+    expect(frostNights(cloudy, { today: TODAY })).toEqual([]);
+    expect(assessNights(cloudy, { today: TODAY })[0]!.level).toBeNull();
+    expect(chillAlerts(cloudy, { today: TODAY }, [young], crops)).toHaveLength(1);
+  });
+
+  it('passes the frost params through to the night assessment', () => {
+    const params = { ...FROST_PARAMS, strongC: { ...FROST_PARAMS.strongC, value: 5 } };
+    expect(chillAlerts(hours(4.5), { today: TODAY, params }, [young], crops)).toEqual([]);
+    expect(chillAlerts(hours(4.5), { today: TODAY }, [young], crops)[0]!.inputs.params.strongC.value).toBe(2);
   });
 
   it('ignores crops without chillC and plantings not in the ground', () => {
-    expect(chillAlerts(nights(3), [planting('courgette', { sownOn: '2026-10-10' })], crops)).toEqual([]);
-    expect(chillAlerts(nights(3), [planting('basilic', { method: 'pot', sownOn: '2026-10-10' })], crops)).toEqual([]);
+    expect(chillAlerts(hours(3), { today: TODAY }, [planting('courgette', { sownOn: '2026-10-10' })], crops)).toEqual([]);
+    expect(chillAlerts(hours(3), { today: TODAY }, [planting('basilic', { method: 'pot', sownOn: '2026-10-10' })], crops)).toEqual([]);
   });
 });
