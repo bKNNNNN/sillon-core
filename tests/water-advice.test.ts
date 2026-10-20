@@ -93,6 +93,11 @@ describe('waterAdvice', () => {
     expect(a.reason).toContain('depuis le 14 juillet (ET0 5 mm/j');
   });
 
+  it('asks for the soil state when the owner answer is older than the weather', () => {
+    const a = waterAdvice({ ...input([]), weather: weather('2026-07-08', dry(7)), today: '2026-07-14', start: { date: '2026-07-01', drMm: 0 } });
+    expect(a).toMatchObject({ status: 'unknown', level: null });
+  });
+
   it('asks for the soil state when it is unknown', () => {
     const a = waterAdvice({ ...input([]), weather: weather('2026-07-12', dry(6)) });
     expect(a).toMatchObject({ status: 'unknown', level: null });

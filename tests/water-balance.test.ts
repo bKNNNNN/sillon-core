@@ -117,6 +117,19 @@ describe('cropStage', () => {
     expect(cropStage(fraise, { days: 10, gddFraction: null })).toEqual({ kind: 'no-data', missing: ['gdd'] });
   });
 
+  it('reports gdd missing for degree-day fractions without a degree-day total', () => {
+    const noTotal = { ...fraise, gdd: undefined };
+    expect(cropStage(noTotal, { days: 10, gddFraction: 0 })).toEqual({ kind: 'no-data', missing: ['gdd'] });
+    const tomatoByGdd = {
+      ...tomate,
+      kcStages: { value: { method: 'gdd-fraction' as const, devFrom: 0.15, midFrom: 0.4, lateFrom: 0.8 }, estimate: true },
+      tBaseC: { value: 10, estimate: true },
+    };
+    expect(cropStage(tomatoByGdd, { days: 90, gddFraction: 0 })).toEqual({ kind: 'no-data', missing: ['gdd'] });
+    const b = waterBalance({ planting: planting('tomate'), crop: tomatoByGdd, weather: weather('2026-04-15', dry(90, { tmin: 18, tmax: 30 })), soil: 'sable', start: { date: '2026-04-15', drMm: 0 } });
+    expect(b).toEqual({ kind: 'no-data', missing: ['gdd'] });
+  });
+
   it('names what is missing', () => {
     expect(cropStage(ail, { days: 10, gddFraction: null })).toEqual({ kind: 'no-data', missing: ['kc', 'kcStages'] });
   });
@@ -146,6 +159,27 @@ describe('waterBalance', () => {
     const b = balanced(tomatoIn(dry(3), { start: { date: '2026-07-12', drMm: 10 } }));
     expect(b.anchor).toEqual({ date: '2026-07-12', drMm: 10, from: 'start' });
     expect(b.days.map((d) => d.drMm)).toEqual([10, 15.75, 21.5]);
+  });
+
+  it('seeds the first weather day from a start on the day before it', () => {
+    const b = balanced(tomatoIn(dry(3), { start: { date: '2026-07-11', drMm: 10 } }));
+    expect(b.anchor).toEqual({ date: '2026-07-11', drMm: 10, from: 'start' });
+    expect(b.days.map((d) => d.date)).toEqual(['2026-07-12', '2026-07-13', '2026-07-14']);
+    expect(b.days.map((d) => d.drMm)).toEqual([15.75, 21.5, 27.25]);
+  });
+
+  it('ignores a start the weather cannot reach, before or after it', () => {
+    const early = { start: { date: '2026-07-01', drMm: 0 } };
+    const late = { start: { date: '2026-07-20', drMm: 0 } };
+    expect(tomatoIn(dry(7), early)).toEqual({ kind: 'unknown', missing: ['start'] });
+    expect(tomatoIn(dry(7), late)).toEqual({ kind: 'unknown', missing: ['start'] });
+    expect(balanced(tomatoIn([...dry(2), { rain: 60 }, ...dry(1)], early)).anchor).toEqual({ date: '2026-07-14', drMm: 0, from: 'rain' });
+    expect(balanced(tomatoIn([...dry(2), { rain: 60 }, ...dry(1)], late)).anchor).toEqual({ date: '2026-07-14', drMm: 0, from: 'rain' });
+  });
+
+  it('takes a start on the last weather day', () => {
+    const b = balanced(tomatoIn(dry(3), { start: { date: '2026-07-14', drMm: 4 } }));
+    expect(b.days.map((d) => [d.date, d.drMm])).toEqual([['2026-07-14', 4]]);
   });
 
   it('ignores rain under 0.2 ET0 and drains what goes past field capacity', () => {

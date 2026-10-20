@@ -54,7 +54,10 @@ export type MildewRun = { from: string; to: string; level: MildewLevel; periods:
 export type MildewOptions = {
   today: string;
   params?: MildewParams;
-  /** Last period day of the alert already sent. A run that continues it gets `repeat: true`. */
+  /**
+   * Last period day of the alert already sent. A run that contains it, or that sits fewer than
+   * `quietDays` dry days from it on either side, is the same episode and gets `repeat: true`.
+   */
   lastAlertedOn?: string;
 };
 
@@ -186,13 +189,17 @@ function startWording(date: string, today: string): string {
 const PROPHYLAXIS = 'Arrose au pied le matin, jamais le feuillage. Retire les feuilles du bas qui touchent le sol. Surveille les taches brunes.';
 const REMOVAL = 'Si une tache apparaît, coupe la feuille et sors-la du jardin, ne la composte pas.';
 
+/** The run is the episode already alerted on `lastAlertedOn`: it contains that day, or follows or precedes it closely. */
+function continuesAlert(run: MildewRun, lastAlertedOn: string, params: MildewParams): boolean {
+  if (lastAlertedOn < run.from) return dryDaysBetween(lastAlertedOn, run.periods[0]!) < params.quietDays.value;
+  if (lastAlertedOn <= run.to) return true;
+  return daysBetween(run.to, lastAlertedOn) - 1 < params.quietDays.value;
+}
+
 function runInputs(run: MildewRun, options: MildewOptions, params: MildewParams): MildewInputs {
   const days = [...new Map(run.periods.flatMap((p) => p.days).map((d) => [d.date, d])).values()];
   const qualifying = days.filter((d) => d.hutton);
-  const repeat =
-    options.lastAlertedOn !== undefined &&
-    options.lastAlertedOn < run.from &&
-    dryDaysBetween(options.lastAlertedOn, run.periods[0]!) < params.quietDays.value;
+  const repeat = options.lastAlertedOn !== undefined && continuesAlert(run, options.lastAlertedOn, params);
   return {
     from: run.from,
     to: run.to,

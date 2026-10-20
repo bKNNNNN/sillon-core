@@ -220,6 +220,21 @@ describe('mildewAlerts', () => {
     expect(mildewAlerts(hours, opts('2026-07-11'), plantings, crops)[0]!.inputs.repeat).toBe(false);
   });
 
+  it('flags the same episode again on a later run, wherever the last alert fell in it', () => {
+    const hours = week({ 3: HUMID, 4: HUMID, 5: HUMID, 6: HUMID });
+    const repeatOn = (today: string, lastAlertedOn?: string) => {
+      const [alert] = mildewAlerts(hours, { today, lastAlertedOn }, plantings, crops);
+      expect(alert!.inputs).toMatchObject({ from: '2026-07-16', to: '2026-07-18' });
+      return alert!.inputs.repeat;
+    };
+    expect(repeatOn('2026-07-14')).toBe(false);
+    expect(repeatOn('2026-07-16', '2026-07-16')).toBe(true);
+    expect(repeatOn('2026-07-16', '2026-07-17')).toBe(true);
+    expect(repeatOn('2026-07-16', '2026-07-18')).toBe(true);
+    expect(repeatOn('2026-07-16', '2026-07-21')).toBe(true);
+    expect(repeatOn('2026-07-16', '2026-07-22')).toBe(false);
+  });
+
   it('ignores hours with no humidity at all', () => {
     const hours = week({ 3: HUMID, 4: HUMID }).map((h) => ({ ...h, relative_humidity_2m: null }));
     expect(mildewAlerts(hours, { today: TODAY }, plantings, crops)).toEqual([]);

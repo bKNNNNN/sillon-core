@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { waterBalance, type SoilType } from '../src/index.js';
+import { addDays, waterBalance, type SoilType } from '../src/index.js';
 import { fraise, planting, salade, tomate, weather } from './water-fixtures.js';
 
 const dayShape = fc.record({
@@ -14,6 +14,8 @@ const soil = fc.constantFrom<SoilType>('sable-pur', 'sable', 'sable-amende');
 const sownOffset = fc.integer({ min: -120, max: 10 });
 const irrigation = fc.array(fc.record({ day: fc.integer({ min: 0, max: 40 }), mm: fc.double({ min: 0, max: 60, noNaN: true }) }), { maxLength: 8 });
 const startDr = fc.double({ min: 0, max: 200, noNaN: true });
+/** Start day relative to the first weather day, often outside the weather range. */
+const startOffset = fc.integer({ min: -15, max: 50 });
 
 const FIRST = '2026-06-01';
 const dateAt = (i: number) => weather(FIRST, Array.from({ length: i + 1 }, () => ({})))[i]!.date;
@@ -21,7 +23,7 @@ const dateAt = (i: number) => weather(FIRST, Array.from({ length: i + 1 }, () =>
 describe('water balance properties', () => {
   it('keeps Dr between 0 and TAW every day, and RAW at or under TAW', () => {
     fc.assert(
-      fc.property(fc.array(dayShape, { minLength: 1, maxLength: 40 }), crop, soil, sownOffset, irrigation, startDr, (shapes, c, s, offset, irr, dr0) => {
+      fc.property(fc.array(dayShape, { minLength: 1, maxLength: 40 }), crop, soil, sownOffset, irrigation, startDr, startOffset, (shapes, c, s, offset, irr, dr0, at) => {
         const sownOn = offset < 0 ? dateAt(0).replace('06-01', '05-01') : dateAt(offset);
         const b = waterBalance({
           planting: planting(c.id, { sownOn }),
@@ -29,9 +31,11 @@ describe('water balance properties', () => {
           weather: weather(FIRST, shapes),
           soil: s,
           irrigations: irr.map((i) => ({ date: dateAt(i.day), mm: i.mm })),
-          start: { date: FIRST, drMm: dr0 },
+          start: { date: addDays(FIRST, at), drMm: dr0 },
         });
         if (b.kind !== 'balance') return;
+        expect(b.days.length).toBeGreaterThan(0);
+        expect(b.days[0]!.date >= b.anchor.date).toBe(true);
         for (const d of b.days) {
           expect(d.drMm).toBeGreaterThanOrEqual(0);
           expect(d.drMm).toBeLessThanOrEqual(d.tawMm + 1e-9);

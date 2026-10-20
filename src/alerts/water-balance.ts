@@ -2,6 +2,7 @@ import type { Crop } from '../crops/schema.js';
 import { dailyGdd } from '../forecast/gdd.js';
 import type { PlantingLike } from '../plantings/types.js';
 import type { DailyWeather } from '../weather/openmeteo.js';
+import { addDays } from '../dates.js';
 import { daysBetween } from './format.js';
 import { inGroundOn } from './frost.js';
 import type { Param, ParamSet } from './types.js';
@@ -85,11 +86,16 @@ function stageAt(x: number, b: Bounds, kc: { initial: number; mid: number; late:
 /**
  * The crop's Kc stage, its Kc (linear during development and late season, as in FAO-56) and the
  * share of its final rooting depth. Uses `kcStages` when the crop has it, else the estimated
- * default degree-day fractions for a crop with `gdd`.
+ * default degree-day fractions for a crop with `gdd`. Degree-day fractions need the crop's `gdd`
+ * total: without it the stage cannot move, so `gdd` is reported missing.
  */
 export function cropStage(crop: Crop, progress: Progress, params: WaterParams = WATER_PARAMS): CropStage {
   const stages = crop.kcStages?.value;
-  const missing = [...(crop.kc ? [] : ['kc']), ...(stages || crop.gdd ? [] : ['kcStages'])];
+  const missing = [
+    ...(crop.kc ? [] : ['kc']),
+    ...(stages || crop.gdd ? [] : ['kcStages']),
+    ...(stages?.method === 'gdd-fraction' && !crop.gdd ? ['gdd'] : []),
+  ];
   if (missing.length > 0) return { kind: 'no-data', missing };
   const kc = crop.kc!.value;
   if (stages?.method === 'fao56-table11') {
@@ -107,7 +113,11 @@ export function cropStage(crop: Crop, progress: Progress, params: WaterParams = 
 /** A logged watering, already converted to mm (1 L/m² = 1 mm). */
 export type Irrigation = { date: string; mm: number };
 
-/** A known soil state: the depletion at the end of `date`, for example 0 when the owner says the soil is wet. */
+/**
+ * A known soil state: the depletion at the end of `date`, for example 0 when the owner says the soil is wet.
+ * It counts only when the weather reaches it: `date` from the day before the first weather day to the
+ * last one. Otherwise the days in between are unknown and the balance needs a refilling rain instead.
+ */
 export type WaterStart = { date: string; drMm: number };
 
 export type WaterBalanceInput = {
@@ -208,9 +218,14 @@ function inResetSeason(date: string, params: WaterParams): boolean {
   return month >= params.resetFromMonth.value || month <= params.resetToMonth.value;
 }
 
+/** True when the weather covers every day after `start`: it begins on the next day at the latest. */
+function startReachable(models: DayModel[], start: WaterStart): boolean {
+  return start.date >= addDays(models[0]!.date, -1) && start.date <= models[models.length - 1]!.date;
+}
+
 /** The known start: the owner's state, else the first rain that refills the soil (agronomy 4.3). */
 function findAnchor(models: DayModel[], start: WaterStart | undefined, params: WaterParams): WaterAnchor | null {
-  if (start) return { date: start.date, drMm: Math.max(0, start.drMm), from: 'start' };
+  if (start && startReachable(models, start)) return { date: start.date, drMm: Math.max(0, start.drMm), from: 'start' };
   const refill = models.find(
     (d) =>
       (inResetSeason(d.date, params) && d.effectiveRainMm >= params.resetRainMm.value) ||
@@ -229,7 +244,8 @@ function step(previous: number, d: DayModel, irrigationMm: number): Pick<WaterDa
 /**
  * The daily root-zone water balance of one planting on sandy soil (FAO-56 single Kc, agronomy 4.1):
  * effective rain, logged waterings, ETc = ET0 × Kc(stage), roots growing from 0.15 m to the crop's
- * `rootDepthM`. It starts at a known state only; days before that state are left out.
+ * `rootDepthM`. It starts at a known state only; days before that state are left out. An owner start
+ * on the day before the weather begins seeds the first day; one the weather cannot reach is ignored.
  */
 export function waterBalance(input: WaterBalanceInput): WaterBalance {
   const params = input.params ?? WATER_PARAMS;
@@ -245,10 +261,12 @@ export function waterBalance(input: WaterBalanceInput): WaterBalance {
   const irrigation = new Map<string, number>();
   for (const i of input.irrigations ?? []) irrigation.set(i.date, (irrigation.get(i.date) ?? 0) + i.mm);
   const days: WaterDay[] = [];
+  let previous = anchor.drMm;
   for (const d of models.filter((m) => m.date >= anchor.date)) {
     const irrigationMm = irrigation.get(d.date) ?? 0;
-    const state = d.date === anchor.date ? { drMm: Math.min(anchor.drMm, d.tawMm), drainedMm: 0 } : step(days[days.length - 1]!.drMm, d, irrigationMm);
+    const state = d.date === anchor.date ? { drMm: Math.min(anchor.drMm, d.tawMm), drainedMm: 0 } : step(previous, d, irrigationMm);
     days.push({ ...d, irrigationMm, ...state });
+    previous = state.drMm;
   }
   return { kind: 'balance', anchor, inGroundOn: since, gddComplete: input.weather[0]!.date <= since, soil, days, params };
 }
