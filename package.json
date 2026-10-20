@@ -1,6 +1,6 @@
 {
   "name": "sillon-core",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Moteur agronomique pur pour un potager : degrés-jours, prévision de récolte, calendrier de semis, rotation, germination, client Open-Meteo.",
   "license": "MIT",
   "author": "Pierrick Deniel",
@@ -9,7 +9,14 @@
     "type": "git",
     "url": "git+https://github.com/bKNNNNN/sillon-core.git"
   },
-  "keywords": ["potager", "jardin", "gdd", "degree-days", "open-meteo", "agronomie"],
+  "keywords": [
+    "potager",
+    "jardin",
+    "gdd",
+    "degree-days",
+    "open-meteo",
+    "agronomie"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -34,7 +41,8 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepare": "tsc -p tsconfig.build.json",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "date-fns": "^4.4.0",
@@ -43,6 +51,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
+    "@vitest/coverage-v8": "5.0.5",
+    "fast-check": "^4.10.2",
     "typescript": "^5.9.3",
     "vitest": "^5.0.5"
   }

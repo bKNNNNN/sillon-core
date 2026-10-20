@@ -13,8 +13,15 @@ export {
   type FirstHarvestPlanting,
 } from './forecast/first-harvest.js';
 export { whatsNext, type WeeklyAction, type CalendarPlanting } from './calendar/whats-next.js';
-export { rotationWarning, FAMILY_LABELS } from './rotation.js';
-export { germinationOutlook, type GerminationOutlook } from './seeds/germination.js';
+export { rotationWarning, rotationAdvice, ROTATION_RULES, FAMILY_LABELS, type RotationAdvice } from './rotation.js';
+export {
+  germinationOutlook,
+  seedLotOutlook,
+  type GerminationOutlook,
+  type SeedLotOutlook,
+  type SeedLotStatus,
+  type SeedLotYear,
+} from './seeds/germination.js';
 export { validatePlanting } from './plantings/validate.js';
 export type { PlantingLike, PlantingInput, PlantingMethod, PlantingStatus } from './plantings/types.js';
 export {

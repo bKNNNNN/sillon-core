@@ -50,7 +50,7 @@ describe('aliases', () => {
   it('counts a planting stored under the alias for the weekly plan', () => {
     const c: Crop = { ...baseCrop, id: 'chou-ete', aliases: ['chou'], transplant: undefined, sowDirect: { value: { from: 10, to: 20 }, estimate: true } };
     const stored = { ...basePlanting, species: 'chou', sownOn: '2026-04-01' };
-    expect(whatsNext([c], [stored], '2026-04-08')).toEqual([]);
+    expect(whatsNext([c], [stored], '2026-04-08').map((a) => a.doneOn)).toEqual([['2026-04-01']]);
   });
 
   it('warns on rotation when history uses the alias', () => {

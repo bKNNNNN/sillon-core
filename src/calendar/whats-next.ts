@@ -1,9 +1,14 @@
 import { addWeeks, differenceInCalendarDays, format, getISOWeek, getISOWeekYear, parseISO, startOfISOWeek } from 'date-fns';
 import { isCrop, windowsOf, type Crop, type Sourced, type WeekWindow, type WeekWindows } from '../crops/schema.js';
 import type { PlantingLike } from '../plantings/types.js';
+import { doneSuffix } from './done-text.js';
 
-/** The planting fields `whatsNext` reads. */
-export type CalendarPlanting = Pick<PlantingLike, 'species' | 'sownOn' | 'status'>;
+/**
+ * The planting fields `whatsNext` reads. `method` and `transplantedOn` are optional:
+ * without a method, a sowing counts for every sowing window.
+ */
+export type CalendarPlanting = Pick<PlantingLike, 'species' | 'sownOn' | 'status'> &
+  Partial<Pick<PlantingLike, 'method' | 'transplantedOn'>>;
 
 export type WeeklyAction = {
   cropId: string;
@@ -11,6 +16,8 @@ export type WeeklyAction = {
   action: 'sow_under_cover' | 'sow_direct' | 'transplant' | 'succession';
   estimate: boolean;
   reason: string;
+  /** Dates (YYYY-MM-DD, ascending) this window was already done in its current occurrence. Empty when not yet. */
+  doneOn: string[];
 };
 
 type Sow = 'sow_under_cover' | 'sow_direct';
@@ -36,12 +43,30 @@ function occurrenceStart(window: WeekWindow, today: string): string {
   return format(addWeeks(weekOne, window.from - 1), 'yyyy-MM-dd');
 }
 
-function lastSownOn(plantings: CalendarPlanting[]): string | undefined {
-  return plantings.reduce<string | undefined>((max, p) => (!max || p.sownOn > max ? p.sownOn : max), undefined);
-}
+const SOW_METHOD: Record<Sow, PlantingLike['method']> = { sow_under_cover: 'pot', sow_direct: 'direct' };
 
-function action(crop: Crop, kind: WeeklyAction['action'], w: Sourced<WeekWindows>, reason: string): WeeklyAction {
-  return { cropId: crop.id, cropName: crop.name, action: kind, estimate: !!w.estimate, reason };
+/**
+ * A bought plant (garlic cloves, seed potatoes) counts for the direct window of a crop that has
+ * no transplant window. Otherwise it counts only for the transplant window.
+ */
+const countsBought = (crop: Crop, kind: Sow): boolean => kind === 'sow_direct' && !crop.transplant;
+
+/** "planté" when every done date comes from a bought plant, "semé" otherwise. */
+const doneVerb = (done: CalendarPlanting[]): 'semé' | 'planté' =>
+  done.length > 0 && done.every((p) => p.method === 'bought') ? 'planté' : 'semé';
+
+/** Sorted unique dates. */
+const dates = (list: (string | null | undefined)[]): string[] =>
+  [...new Set(list.filter((d): d is string => Boolean(d)))].sort();
+
+function action(
+  crop: Crop,
+  kind: WeeklyAction['action'],
+  w: Sourced<WeekWindows>,
+  reason: string,
+  doneOn: string[],
+): WeeklyAction {
+  return { cropId: crop.id, cropName: crop.name, action: kind, estimate: !!w.estimate, reason, doneOn };
 }
 
 function sowActions(crop: Crop, mine: CalendarPlanting[], week: number, today: string): WeeklyAction[] {
@@ -55,29 +80,46 @@ function sowActions(crop: Crop, mine: CalendarPlanting[], week: number, today: s
     const current = w && currentWindow(week, w.value);
     if (!w || !current) continue;
     const start = occurrenceStart(current, today);
-    const last = lastSownOn(mine.filter((p) => p.sownOn >= start));
+    const bought = countsBought(crop, kind);
+    const inOccurrence = mine.filter((p) => p.sownOn >= start && (bought || p.method !== 'bought'));
+    const all = dates(inOccurrence.map((p) => p.sownOn));
+    const reason = windowReason(label, current);
+    const last = all[all.length - 1];
     const every = crop.successionDays?.value;
     if (!last) {
-      out.push(action(crop, kind, w, windowReason(label, current)));
+      out.push(action(crop, kind, w, reason, []));
       continue;
     }
-    if (every === undefined || succeeded) continue;
+    if (succeeded) continue;
     const since = differenceInCalendarDays(parseISO(today), parseISO(last));
-    if (since < every) continue;
-    succeeded = true;
-    out.push(action(crop, 'succession', w, `Dernier semis il y a ${since} jours, à renouveler tous les ${every} jours.`));
+    if (every !== undefined && since >= every) {
+      succeeded = true;
+      const text = `Dernier semis il y a ${since} jours, à renouveler tous les ${every} jours.`;
+      out.push(action(crop, 'succession', w, text, all));
+      continue;
+    }
+    const matching = inOccurrence.filter((p) => !p.method || p.method === SOW_METHOD[kind] || p.method === 'bought');
+    const done = dates(matching.map((p) => p.sownOn));
+    out.push(action(crop, kind, w, `${reason}${doneSuffix(doneVerb(matching), done)}`, done));
   }
   return out;
+}
+
+function transplantAction(crop: Crop, mine: CalendarPlanting[], week: number, today: string): WeeklyAction | null {
+  const t = crop.transplant;
+  const current = t && currentWindow(week, t.value);
+  if (!t || !current) return null;
+  const start = occurrenceStart(current, today);
+  const planted = mine.map((p) => p.transplantedOn ?? (p.method === 'bought' ? p.sownOn : null));
+  const done = dates(planted.filter((d) => d && d >= start));
+  return action(crop, 'transplant', t, `${windowReason('plantation', current)}${doneSuffix('planté', done)}`, done);
 }
 
 export function whatsNext(crops: Crop[], active: CalendarPlanting[], today: string): WeeklyAction[] {
   const week = getISOWeek(parseISO(today));
   return crops.flatMap((crop) => {
     const mine = active.filter((p) => p.status === 'active' && isCrop(crop, p.species));
-    const out = sowActions(crop, mine, week, today);
-    const t = crop.transplant;
-    const current = t && currentWindow(week, t.value);
-    if (t && current) out.push(action(crop, 'transplant', t, windowReason('plantation', current)));
-    return out;
+    const transplant = transplantAction(crop, mine, week, today);
+    return transplant ? [...sowActions(crop, mine, week, today), transplant] : sowActions(crop, mine, week, today);
   });
 }
