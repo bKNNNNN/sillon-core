@@ -79,6 +79,18 @@ Une culture peut déclarer `aliases`, la liste de ses anciens identifiants. `get
 
 Les fonctions prennent un type minimal, `PlantingLike` : `species`, `sownOn`, `method`, `status`, `transplantedOn` et `harvestedOn`. Une ligne de ta base de données convient telle quelle si elle a ces champs. Les autres champs sont ignorés.
 
+## Météo horaire et alertes de gel
+
+- `fetchHourly` lit la météo heure par heure : température, humidité, point de rosée, nébulosité totale et basse, vent moyen et rafales, température du sol à 6 et 18 cm, pluie. Par défaut, 7 jours passés et 7 jours de prévision. Chaque variable vient du premier modèle qui la fournit, dans cet ordre : AROME 1,5 km, AROME 2,5 km (le 1,5 km n'a pas la nébulosité totale), ARPEGE Europe, puis le modèle par défaut d'Open-Meteo (le seul qui donne la température du sol, et le seul au-delà de 4 jours). Chaque heure garde `model`, le modèle de sa température, et `modelOf`, le modèle de chaque variable.
+- `assessNights` évalue chaque nuit à partir de ce soir, de 18 h à 9 h. Le niveau suit la revue agronomique : `gel` à 0 °C ou moins, `fort` à 2 °C ou moins, ou à 4 °C ou moins par ciel clair (nébulosité moyenne sous 30 % entre 0 h et 6 h) et vent calme (sous 10 km/h). `faible` jusqu'à 6 °C dans les mêmes conditions, pour les cultures tendres seulement. Les seuils sont dans `FROST_PARAMS` : seul le 0 °C a une source, les marges sont des estimations et le résultat porte `estimate: true`. `frostNights` ne garde que les nuits qui ont un niveau.
+- `frostAlerts` croise ces nuits avec les plantations en pleine terre (un semis en godet compte à partir de son repiquage). Une culture `tender` est concernée à tous les niveaux, une culture `semi` à `gel` et `fort`, une culture `hardy` jamais. Le texte nomme les cultures et dit quoi faire : voile, buttage des pommes de terre, arrosage du sol l'après-midi.
+- `chillAlerts` prévient d'une nuit froide sans gel pour une culture qui a un `chillC` (le basilic, 5 °C), plantée depuis moins de 30 jours, quand l'alerte de gel ne la couvre pas déjà.
+- `lastFrostStats` date la dernière gelée de printemps et la première d'automne de chaque année complète d'un historique quotidien, puis donne la médiane et la date après laquelle 9 printemps sur 10 n'ont plus de gelée (et 1 automne sur 10 en a déjà une). Une année sans gelée compte. `calibrateFrostThreshold` relève le seuil par pas de 0,5 °C jusqu'à ce que les jours de gel de mars et de novembre de la maille tombent à 20 % près des normales de Bordeaux-Mérignac (`MERIGNAC_FROST_DAYS`), et garde le seuil le plus proche sinon.
+
+Chaque résultat garde ce qu'il a lu (`inputs`, avec les paramètres) et une phrase en français (`reason`), par exemple : « Gel possible la nuit du jeudi 22 au vendredi 23 octobre (mini prévue 1 °C, ciel clair, vent faible). Couvre d'un voile ce soir : tomate, courgette. »
+
+Le schéma de culture accepte aussi, tous facultatifs et chacun avec une source ou `estimate: true` : `frostClass` (`tender`, `semi`, `hardy` ; sans lui, `frostSensitive` vaut `tender` ou `hardy`), `chillC`, `rootDepthM` et `depletionP` (FAO-56 tableau 22), `germSoilC` (`min`, `optLow`, `optHigh`, `max`, l'optimum étant facultatif), et `kcStages`, soit en jours par stade (`method: fao56-table11`), soit en fraction des degrés-jours (`method: gdd-fraction`, qui exige `gdd`).
+
 ## Données de cultures
 
 Le moteur ne fournit aucune culture. Il s'utilise avec la base [sillon-cultures](https://github.com/bKNNNNN/sillon-cultures) : fenêtres de semis, degrés-jours, températures de base et durée de vie des graines, avec leurs sources. Cette base est publiée sous licence CC BY-SA 4.0, distincte de celle de ce code. Tu peux aussi écrire ton propre fichier, à condition qu'il respecte le schéma `cropSchema`.
