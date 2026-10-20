@@ -17,7 +17,15 @@ describe('whatsNext on sillon-cultures v0.2.0', () => {
     expect(getCrop(crops, 'chou')?.id).toBe('chou-ete');
     const stored = { ...basePlanting, species: 'chou', method: 'pot' as const, sownOn: '2026-03-01' };
     const plan = whatsNext(crops, [stored], '2026-03-18');
-    expect(plan.some((a) => a.cropId === 'chou-ete' && a.action === 'sow_under_cover')).toBe(false);
+    const row = plan.find((a) => a.cropId === 'chou-ete' && a.action === 'sow_under_cover');
+    expect(row?.doneOn).toEqual(['2026-03-01']);
+  });
+
+  it('keeps the garlic window after the planting of 18 October', () => {
+    const ail = { ...basePlanting, species: 'ail', sownOn: '2026-10-18' };
+    const row = whatsNext(crops, [ail], '2026-10-21').find((a) => a.cropId === 'ail');
+    expect(row).toMatchObject({ action: 'sow_direct', doneOn: ['2026-10-18'] });
+    expect(row?.reason).toBe('Fenêtre de semis direct : semaines 41 à 49. Déjà semé le 18 oct.');
   });
 
   it('gives a bought courgette plant a harvest counted from planting', () => {
