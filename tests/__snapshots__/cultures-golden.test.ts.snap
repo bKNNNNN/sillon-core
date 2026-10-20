@@ -1,0 +1,90 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`whatsNext on sillon-cultures v0.2.0 > golden plan for 2026-02-10 1`] = `
+[
+  "tomate sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 13.",
+  "petit-pois sow_direct ~: Fenêtre de semis direct : semaines 6 à 16.",
+  "salade sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 12.",
+  "radis sow_direct ~: Fenêtre de semis direct : semaines 6 à 18.",
+  "oignon sow_under_cover ~: Fenêtre de semis sous abri : semaines 3 à 8.",
+  "ail sow_direct ~: Fenêtre de semis direct (ail de printemps) : semaines 5 à 9.",
+  "pomme-de-terre sow_direct ~: Fenêtre de semis direct (sous voile) : semaines 6 à 10.",
+  "epinard sow_direct ~: Fenêtre de semis direct : semaines 6 à 15.",
+  "chou-ete sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 22.",
+  "basilic sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 17.",
+  "persil sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 12.",
+  "feve sow_direct ~: Fenêtre de semis direct : semaines 6 à 18.",
+]
+`;
+
+exports[`whatsNext on sillon-cultures v0.2.0 > golden plan for 2026-03-18 1`] = `
+[
+  "tomate sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 13.",
+  "petit-pois sow_direct ~: Fenêtre de semis direct : semaines 6 à 16.",
+  "salade sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 12.",
+  "salade sow_direct ~: Fenêtre de semis direct : semaines 10 à 22.",
+  "salade transplant ~: Fenêtre de plantation : semaines 10 à 40.",
+  "radis sow_direct ~: Fenêtre de semis direct : semaines 6 à 18.",
+  "carotte sow_direct ~: Fenêtre de semis direct : semaines 10 à 27.",
+  "betterave sow_direct ~: Fenêtre de semis direct : semaines 10 à 36.",
+  "poireau sow_direct ~: Fenêtre de semis direct : semaines 10 à 20.",
+  "oignon sow_direct ~: Fenêtre de semis direct : semaines 10 à 22.",
+  "oignon transplant ~: Fenêtre de plantation : semaines 10 à 22.",
+  "pomme-de-terre sow_direct ~: Fenêtre de semis direct : semaines 11 à 17.",
+  "epinard sow_direct ~: Fenêtre de semis direct : semaines 6 à 15.",
+  "chou-ete sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 22.",
+  "chou-ete transplant ~: Fenêtre de plantation : semaines 10 à 27.",
+  "basilic sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 17.",
+  "persil sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 12.",
+  "feve sow_direct ~: Fenêtre de semis direct : semaines 6 à 18.",
+]
+`;
+
+exports[`whatsNext on sillon-cultures v0.2.0 > golden plan for 2026-05-20 1`] = `
+[
+  "tomate transplant ~: Fenêtre de plantation : semaines 19 à 25.",
+  "courgette sow_direct ~: Fenêtre de semis direct : semaines 19 à 23.",
+  "courgette transplant ~: Fenêtre de plantation : semaines 19 à 23.",
+  "courge sow_direct ~: Fenêtre de semis direct : semaines 19 à 22.",
+  "courge transplant ~: Fenêtre de plantation : semaines 20 à 23.",
+  "concombre sow_direct ~: Fenêtre de semis direct : semaines 19 à 23.",
+  "concombre transplant ~: Fenêtre de plantation : semaines 19 à 27.",
+  "haricot sow_direct ~: Fenêtre de semis direct : semaines 19 à 31.",
+  "salade sow_direct ~: Fenêtre de semis direct : semaines 10 à 22.",
+  "salade transplant ~: Fenêtre de plantation : semaines 10 à 40.",
+  "carotte sow_direct ~: Fenêtre de semis direct : semaines 10 à 27.",
+  "betterave sow_direct ~: Fenêtre de semis direct : semaines 10 à 36.",
+  "oignon sow_direct ~: Fenêtre de semis direct : semaines 10 à 22.",
+  "oignon transplant ~: Fenêtre de plantation : semaines 10 à 22.",
+  "blette sow_direct ~: Fenêtre de semis direct : semaines 15 à 36.",
+  "chou-ete sow_under_cover ~: Fenêtre de semis sous abri : semaines 6 à 22.",
+  "chou-ete transplant ~: Fenêtre de plantation : semaines 10 à 27.",
+  "basilic sow_direct ~: Fenêtre de semis direct : semaines 19 à 24.",
+  "basilic transplant ~: Fenêtre de plantation : semaines 19 à 23.",
+  "persil sow_direct ~: Fenêtre de semis direct : semaines 15 à 36.",
+]
+`;
+
+exports[`whatsNext on sillon-cultures v0.2.0 > golden plan for 2026-08-26 1`] = `
+[
+  "salade sow_direct ~: Fenêtre de semis direct : semaines 32 à 36.",
+  "salade transplant ~: Fenêtre de plantation : semaines 10 à 40.",
+  "radis sow_direct ~: Fenêtre de semis direct : semaines 32 à 44.",
+  "betterave sow_direct ~: Fenêtre de semis direct : semaines 10 à 36.",
+  "epinard sow_direct ~: Fenêtre de semis direct : semaines 35 à 41.",
+  "blette sow_direct ~: Fenêtre de semis direct : semaines 15 à 36.",
+  "chou-hiver transplant ~: Fenêtre de plantation : semaines 28 à 36.",
+  "fraise transplant ~: Fenêtre de plantation : semaines 35 à 41.",
+  "persil sow_direct ~: Fenêtre de semis direct : semaines 15 à 36.",
+]
+`;
+
+exports[`whatsNext on sillon-cultures v0.2.0 > golden plan for 2026-10-21 1`] = `
+[
+  "petit-pois sow_direct ~: Fenêtre de semis direct (automne, variété rustique) : semaines 43 à 47.",
+  "radis sow_direct ~: Fenêtre de semis direct : semaines 32 à 44.",
+  "ail sow_direct ~: Fenêtre de semis direct : semaines 41 à 49.",
+  "feve sow_direct ~: Fenêtre de semis direct (automne, hiver doux) : semaines 41 à 52.",
+  "mache sow_direct ~: Fenêtre de semis direct : semaines 36 à 44.",
+]
+`;
