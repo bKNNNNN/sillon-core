@@ -77,3 +77,18 @@ export {
   type FrostParams,
   type NightOptions,
 } from './alerts/frost.js';
+export {
+  lastFrostStats,
+  calibrateFrostThreshold,
+  MERIGNAC_FROST_DAYS,
+  LAST_FROST_PARAMS,
+  CALIBRATION_PARAMS,
+  type DailyMin,
+  type FrostYear,
+  type LastFrostStats,
+  type LastFrostOptions,
+  type LastFrostParams,
+  type FrostCalibration,
+  type CalibrationRow,
+  type CalibrationOptions,
+} from './alerts/last-frost.js';
