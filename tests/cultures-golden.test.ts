@@ -25,4 +25,12 @@ describe('whatsNext on sillon-cultures v0.2.0', () => {
     const plant = { ...basePlanting, species: 'courgette', method: 'bought' as const, sownOn: '2026-05-10' };
     expect(forecastFirstHarvest(plant, courgette)?.expected).toBe('2026-06-14');
   });
+
+  it('labels the concombre transplant end as an estimate, not a quote', () => {
+    const source = getCrop(crops, 'concombre')?.transplant?.source ?? '';
+    expect(getCrop(crops, 'concombre')?.transplant?.value).toEqual({ from: 19, to: 27 });
+    expect(source).toContain('to: estimation');
+    expect(source).toContain('pas avant le mois de mai');
+    expect(source).not.toContain('jusque fin juin');
+  });
 });
