@@ -92,3 +92,19 @@ export {
   type CalibrationRow,
   type CalibrationOptions,
 } from './alerts/last-frost.js';
+export {
+  mildewDays,
+  mildewPeriods,
+  mildewRuns,
+  mildewAlerts,
+  MILDEW_PARAMS,
+  MILDEW_HOSTS,
+  type MildewLevel,
+  type MildewDay,
+  type MildewPeriod,
+  type MildewRun,
+  type MildewOptions,
+  type MildewInputs,
+  type MildewAlert,
+  type MildewParams,
+} from './alerts/mildew.js';

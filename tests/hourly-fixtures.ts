@@ -45,3 +45,24 @@ export function night(evening: string, shape: NightShape): HourlyWeather[] {
     });
   });
 }
+
+export type DayShape = {
+  /** Day minimum, reached at 05:00. */
+  tmin: number;
+  /** Hours at 95 % relative humidity, counted from 00:00; the other hours sit at 70 %. */
+  humidHours: number;
+};
+
+/** The 24 hours of `date` (00:00 to 23:00) for the mildew rules. */
+export function day(date: string, shape: DayShape): HourlyWeather[] {
+  return Array.from({ length: 24 }, (_, h) =>
+    hour(`${date}T${pad(h)}:00`, h === 5 ? shape.tmin : shape.tmin + 4, {
+      relative_humidity_2m: h < shape.humidHours ? 95 : 70,
+    }),
+  );
+}
+
+/** Consecutive days from `first`, one shape per day. */
+export function days(first: string, shapes: DayShape[]): HourlyWeather[] {
+  return shapes.flatMap((shape, i) => day(addDays(first, i), shape));
+}
