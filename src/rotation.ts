@@ -13,6 +13,7 @@ export const FAMILY_LABELS: Readonly<Record<string, string>> = {
   amaranthacees: 'Amaranthacées',
   rosacees: 'Rosacées',
   lamiacees: 'Lamiacées',
+  valerianacees: 'Valérianacées',
 };
 
 const ROTATION_YEARS = 3;

@@ -93,3 +93,10 @@ describe('firstHarvestDays from sowing and from transplant', () => {
     expect(forecastFirstHarvest({ ...basePlanting, method: 'pot', sownOn: '2026-04-10' }, both)?.expected).toBe('2026-06-09');
   });
 });
+
+describe('family labels', () => {
+  it('labels the valerian family used by mache', async () => {
+    const { FAMILY_LABELS } = await import('../src/index.js');
+    expect(FAMILY_LABELS.valerianacees).toBe('Valérianacées');
+  });
+});
