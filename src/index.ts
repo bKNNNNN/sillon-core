@@ -117,3 +117,12 @@ export {
   type HeatOptions,
   type HeatParams,
 } from './alerts/heat.js';
+export {
+  slugAlerts,
+  SLUG_PARAMS,
+  SLUG_CROPS,
+  type SlugAlert,
+  type SlugInputs,
+  type SlugOptions,
+  type SlugParams,
+} from './alerts/slugs.js';
