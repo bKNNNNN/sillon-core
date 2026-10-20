@@ -1,5 +1,5 @@
 import { parse } from 'yaml';
-import { cropSchema, type Crop } from './schema.js';
+import { cropSchema, isCrop, type Crop } from './schema.js';
 
 function describeId(entry: unknown, index: number): string {
   const id = (entry as { id?: unknown } | null)?.id;
@@ -30,10 +30,20 @@ export function parseCrops(yamlText: string): Crop[] {
     seen.add(c.id);
   }
 
+  const owner = new Map<string, string>();
+  for (const c of crops) {
+    for (const alias of c.aliases ?? []) {
+      if (seen.has(alias)) errors.push(`${c.id}: alias ${alias} is also a crop id`);
+      const other = owner.get(alias);
+      if (other) errors.push(`${c.id}: alias ${alias} already used by ${other}`);
+      owner.set(alias, c.id);
+    }
+  }
+
   if (errors.length > 0) throw new Error(`Invalid crops:\n${errors.join('\n')}`);
   return crops;
 }
 
 export function getCrop(crops: Crop[], id: string): Crop | undefined {
-  return crops.find((c) => c.id === id);
+  return crops.find((c) => c.id === id) ?? crops.find((c) => isCrop(c, id));
 }

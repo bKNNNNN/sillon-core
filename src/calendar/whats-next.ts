@@ -1,5 +1,5 @@
 import { addWeeks, differenceInCalendarDays, format, getISOWeek, getISOWeekYear, parseISO, startOfISOWeek } from 'date-fns';
-import { windowsOf, type Crop, type Sourced, type WeekWindow, type WeekWindows } from '../crops/schema.js';
+import { isCrop, windowsOf, type Crop, type Sourced, type WeekWindow, type WeekWindows } from '../crops/schema.js';
 import type { PlantingLike } from '../plantings/types.js';
 
 /** The planting fields `whatsNext` reads. */
@@ -23,8 +23,9 @@ function currentWindow(week: number, windows: WeekWindows): WeekWindow | undefin
   return windowsOf(windows).find((w) => inWindow(week, w));
 }
 
-function windowReason(label: string, { from, to }: WeekWindow): string {
-  return `Fenêtre de ${label} : semaines ${from} à ${to}.`;
+function windowReason(label: string, { from, to, note }: WeekWindow): string {
+  const qualifier = note ? ` (${note})` : '';
+  return `Fenêtre de ${label}${qualifier} : semaines ${from} à ${to}.`;
 }
 
 function occurrenceStart(window: WeekWindow, today: string): string {
@@ -72,7 +73,7 @@ function sowActions(crop: Crop, mine: CalendarPlanting[], week: number, today: s
 export function whatsNext(crops: Crop[], active: CalendarPlanting[], today: string): WeeklyAction[] {
   const week = getISOWeek(parseISO(today));
   return crops.flatMap((crop) => {
-    const mine = active.filter((p) => p.status === 'active' && p.species === crop.id);
+    const mine = active.filter((p) => p.status === 'active' && isCrop(crop, p.species));
     const out = sowActions(crop, mine, week, today);
     const t = crop.transplant;
     const current = t && currentWindow(week, t.value);
