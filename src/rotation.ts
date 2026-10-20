@@ -1,3 +1,4 @@
+import { getCrop } from './crops/parse.js';
 import type { Crop } from './crops/schema.js';
 import type { PlantingLike } from './plantings/types.js';
 
@@ -12,6 +13,7 @@ export const FAMILY_LABELS: Readonly<Record<string, string>> = {
   amaranthacees: 'Amaranthacées',
   rosacees: 'Rosacées',
   lamiacees: 'Lamiacées',
+  valerianacees: 'Valérianacées',
 };
 
 const ROTATION_YEARS = 3;
@@ -24,11 +26,11 @@ export function rotationWarning(
   sownOn: string,
   crops: Crop[],
 ): string | null {
-  const family = crops.find((c) => c.id === species)?.family;
+  const family = getCrop(crops, species)?.family;
   if (!family) return null;
   const earliestYear = yearOf(sownOn) - (ROTATION_YEARS - 1);
   const years = history
-    .filter((h) => crops.find((c) => c.id === h.species)?.family === family)
+    .filter((h) => getCrop(crops, h.species)?.family === family)
     .map((h) => yearOf(h.sownOn))
     .filter((y) => y >= earliestYear);
   if (years.length === 0) return null;

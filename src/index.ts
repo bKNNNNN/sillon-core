@@ -20,10 +20,13 @@ export type { PlantingLike, PlantingInput, PlantingMethod, PlantingStatus } from
 export {
   cropSchema,
   windowsOf,
+  firstHarvestsOf,
+  isCrop,
   type Crop,
   type WeekWindow,
   type WeekWindows,
   type FirstHarvestDays,
+  type FirstHarvestDaysList,
   type Sourced,
 } from './crops/schema.js';
 export { parseCrops, getCrop } from './crops/parse.js';
