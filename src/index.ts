@@ -58,3 +58,22 @@ export {
   type HourlyOptions,
   type Night,
 } from './weather/hourly.js';
+export type { Alert, AlertCrop, AlertKind, FrostLevel, Param, ParamSet } from './alerts/types.js';
+export {
+  assessNights,
+  frostNights,
+  frostAlerts,
+  chillAlerts,
+  frostLevel,
+  frostClassOf,
+  frostConcerns,
+  inGroundOn,
+  FROST_PARAMS,
+  CHILL_PARAMS,
+  type FrostNight,
+  type FrostNightInputs,
+  type FrostAlert,
+  type ChillAlert,
+  type FrostParams,
+  type NightOptions,
+} from './alerts/frost.js';
