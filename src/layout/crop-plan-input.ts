@@ -25,6 +25,7 @@ export const MAX_WISHES = 100;
 export const MAX_PLAN_SLOTS = 500;
 export const MAX_HISTORY_PER_BED = 500;
 export const MAX_NEIGHBOUR_PAIRS = 5_000;
+export const MAX_CROP_ID_LENGTH = 80;
 
 export const NO_BED = 'Aucune planche libre.';
 export const NO_WISH = 'Aucune culture demandée.';
@@ -36,14 +37,17 @@ export const SELF_NEIGHBOUR = 'Une planche ne peut pas être sa propre voisine.'
 export const PLAN_TOO_LARGE = 'Plan trop grand : réduis le nombre de planches ou de cultures.';
 export const unknownBed = (id: string) => `Planche inconnue : ${id}.`;
 export const duplicateBed = (id: string) => `Planche en double : ${id}.`;
-export const unknownCrop = (id: string) => `Culture inconnue : ${id}.`;
+export const INVALID_CROP_ID = 'Culture sans nom.';
 export const duplicateWish = (id: string) => `Culture demandée deux fois : ${id}.`;
 export const invalidDate = (d: string) => `Date invalide : ${d}.`;
 export const bedOverfilled = (id: string) => `Trop de cultures sur ${id}.`;
 export const cropTwiceOnBed = (id: string) => `Une culture apparaît deux fois sur ${id}.`;
 
-/** A crop as the scorer reads it, resolved once. `wanted` is 0 for a crop added by hand. */
-export type PlanCrop = { crop: Crop; sownOn: string; wanted: number; good: ReadonlySet<string>; bad: ReadonlySet<string> };
+/**
+ * A crop as the scorer reads it, resolved once. `wanted` is 0 for a crop added by hand. A `free`
+ * crop is outside the catalog: no family, no companions, so no rotation or companion term.
+ */
+export type PlanCrop = { crop: Crop; sownOn: string; wanted: number; free: boolean; good: ReadonlySet<string>; bad: ReadonlySet<string> };
 export type PlanBed = { id: string; label: string; history: NonNullable<CropPlanInput['beds'][number]['history']> };
 
 /** Everything the scorer needs, ids replaced by indexes. */
@@ -67,8 +71,21 @@ function resolveIds(catalog: Crop[], ids: readonly string[]): Set<string> {
   return new Set(ids.map((id) => getCrop(catalog, id)?.id ?? id));
 }
 
-export function planCrop(catalog: Crop[], crop: Crop, sownOn: string, wanted: number): PlanCrop {
-  return { crop, sownOn, wanted, good: resolveIds(catalog, crop.goodCompanions), bad: resolveIds(catalog, crop.badCompanions) };
+function planCrop(catalog: Crop[], crop: Crop, sownOn: string, wanted: number): PlanCrop {
+  return { crop, sownOn, wanted, free: false, good: resolveIds(catalog, crop.goodCompanions), bad: resolveIds(catalog, crop.badCompanions) };
+}
+
+function freeCrop(id: string, name: string | undefined, sownOn: string, wanted: number): PlanCrop {
+  const crop: Crop = { id, name: name?.trim() || id, family: '', frostSensitive: false, goodCompanions: [], badCompanions: [] };
+  return { crop, sownOn, wanted, free: true, good: new Set(), bad: new Set() };
+}
+
+const validId = (id: string) => id.trim().length > 0 && id.length <= MAX_CROP_ID_LENGTH;
+
+/** The catalog crop for `id`, or a free-name crop when the catalog does not know it. */
+function lookUp(catalog: Crop[], id: string, name: string | undefined, sownOn: string, wanted: number): PlanCrop {
+  const crop = getCrop(catalog, id);
+  return crop ? planCrop(catalog, crop, sownOn, wanted) : freeCrop(id, name, sownOn, wanted);
 }
 
 function readBeds(input: CropPlanInput): Result<PlanBed[]> {
@@ -96,17 +113,17 @@ function readWishes(input: CropPlanInput, catalog: Crop[]): Result<PlanCrop[]> {
   const crops: PlanCrop[] = [];
   let slots = 0;
   for (const w of input.wishes) {
-    const crop = getCrop(catalog, w.cropId);
-    if (!crop) return fail(unknownCrop(w.cropId));
-    if (seen.has(crop.id)) return fail(duplicateWish(crop.id));
-    seen.add(crop.id);
+    if (!validId(w.cropId) || (w.name !== undefined && w.name.length > MAX_CROP_ID_LENGTH)) return fail(INVALID_CROP_ID);
+    const id = getCrop(catalog, w.cropId)?.id ?? w.cropId;
+    if (seen.has(id)) return fail(duplicateWish(id));
+    seen.add(id);
     const beds = w.beds ?? 1;
     if (!Number.isInteger(beds) || beds < 1) return fail(INVALID_BED_COUNT);
     slots += beds;
     if (slots > MAX_PLAN_SLOTS) return fail(PLAN_TOO_LARGE);
     const sownOn = w.sownOn ?? input.sownOn;
     if (!isValidCivilDate(sownOn)) return fail(invalidDate(sownOn));
-    crops.push(planCrop(catalog, crop, sownOn, beds));
+    crops.push(lookUp(catalog, w.cropId, w.name, sownOn, beds));
   }
   return ok(crops);
 }
@@ -174,13 +191,13 @@ export function readAssignments(
     seen.add(b);
     if (a.cropIds.length > model.cropsPerBed) return fail(bedOverfilled(model.beds[b]!.label));
     for (const id of a.cropIds) {
-      const crop = getCrop(model.catalog, id);
-      if (!crop) return fail(unknownCrop(id));
-      let c = cropIndex.get(crop.id);
+      if (!validId(id)) return fail(INVALID_CROP_ID);
+      const resolved = getCrop(model.catalog, id)?.id ?? id;
+      let c = cropIndex.get(resolved);
       if (c === undefined) {
         c = crops.length;
-        crops.push(planCrop(model.catalog, crop, model.sownOn, 0));
-        cropIndex.set(crop.id, c);
+        crops.push(lookUp(model.catalog, id, undefined, model.sownOn, 0));
+        cropIndex.set(resolved, c);
       }
       if (state[b]!.includes(c)) return fail(cropTwiceOnBed(model.beds[b]!.label));
       state[b]!.push(c);

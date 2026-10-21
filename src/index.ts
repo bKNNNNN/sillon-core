@@ -244,6 +244,8 @@ export {
   MAX_PLAN_SLOTS,
   MAX_HISTORY_PER_BED,
   MAX_NEIGHBOUR_PAIRS,
+  MAX_CROP_ID_LENGTH,
+  INVALID_CROP_ID,
   NO_BED,
   NO_WISH,
   BED_WITHOUT_ID,
@@ -266,4 +268,5 @@ export {
   type CropPlanUnplaced,
   type CropPlanOption,
   type CropPlan,
+  type CropPlanFreeCrop,
 } from './layout/index.js';

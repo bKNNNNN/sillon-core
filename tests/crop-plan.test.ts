@@ -221,9 +221,9 @@ describe('scoreCropPlan', () => {
     expect(score.unplaced).toBe(W.unplaced);
   });
 
-  it('refuses a plan naming an unknown bed or crop, or one bed twice', () => {
+  it('refuses a plan naming an unknown bed, a nameless crop, or one bed twice', () => {
     expect(scoreCropPlan(base, [{ bedId: 'x', cropIds: ['tomate'] }])).toEqual({ ok: false, error: 'Planche inconnue : x.' });
-    expect(scoreCropPlan(base, [{ bedId: 'planche-1', cropIds: ['mystere'] }])).toEqual({ ok: false, error: 'Culture inconnue : mystere.' });
+    expect(scoreCropPlan(base, [{ bedId: 'planche-1', cropIds: [''] }])).toEqual({ ok: false, error: 'Culture sans nom.' });
     expect(
       scoreCropPlan(base, [
         { bedId: 'planche-1', cropIds: ['tomate'] },
@@ -243,6 +243,34 @@ describe('scoreCropPlan', () => {
   });
 });
 
+describe('solveCropPlan: crops outside the catalog', () => {
+  it('places a free-name crop with no data, and says so', () => {
+    const bed: CropPlanBed = { id: 'a', label: 'Carré 1', history: [{ species: 'ail-des-ours', sownOn: '2025-03-01' }] };
+    const result = plan({ beds: [bed, { id: 'b' }], neighbours: [['a', 'b']], wishes: [{ cropId: 'ail-des-ours', name: 'Ail des ours' }, { cropId: 'tomate' }] });
+    const [best] = result.options;
+    expect(best!.assignments.flatMap((a) => a.cropIds).sort()).toEqual(['ail-des-ours', 'tomate']);
+    expect(best!.score.total).toBe(0);
+    expect(result.withoutData).toEqual([
+      { cropId: 'ail-des-ours', name: 'Ail des ours', text: 'Ail des ours : pas de donnée, placé sans rotation ni compagnonnage.' },
+    ]);
+  });
+
+  it('names a free crop after its id when no name is given, and never counts it as a family', () => {
+    const result = plan({ beds: beds(1), cropsPerBed: 2, wishes: [{ cropId: 'mystere' }, { cropId: 'tomate' }] });
+    expect(result.withoutData[0]!.name).toBe('mystere');
+    expect(result.options[0]!.score.families).toBe(0);
+  });
+
+  it('scores a free crop placed by hand', () => {
+    const input: CropPlanInput = { beds: beds(1), crops: catalog, sownOn: '2026-04-01', cropsPerBed: 2, wishes: [{ cropId: 'tomate' }] };
+    expect(value(scoreCropPlan(input, [{ bedId: 'planche-1', cropIds: ['tomate', 'mystere'] }])).total).toBe(0);
+  });
+
+  it('lists nothing when every crop is in the catalog', () => {
+    expect(plan({ beds: beds(1), wishes: [{ cropId: 'tomate' }] }).withoutData).toEqual([]);
+  });
+});
+
 describe('solveCropPlan: refusals', () => {
   const ok: CropPlanInput = { beds: beds(2), crops: catalog, sownOn: '2026-04-01', wishes: [{ cropId: 'tomate' }] };
   const cases: [string, Partial<CropPlanInput>, string][] = [
@@ -250,7 +278,9 @@ describe('solveCropPlan: refusals', () => {
     ['duplicate bed', { beds: [{ id: 'a' }, { id: 'a' }] }, 'Planche en double : a.'],
     ['empty bed id', { beds: [{ id: '' }] }, 'Planche sans identifiant.'],
     ['no wish', { wishes: [] }, 'Aucune culture demandée.'],
-    ['unknown crop', { wishes: [{ cropId: 'mystere' }] }, 'Culture inconnue : mystere.'],
+    ['crop without id', { wishes: [{ cropId: ' ' }] }, 'Culture sans nom.'],
+    ['crop id too long', { wishes: [{ cropId: 'x'.repeat(81) }] }, 'Culture sans nom.'],
+    ['crop name too long', { wishes: [{ cropId: 'x', name: 'x'.repeat(81) }] }, 'Culture sans nom.'],
     ['wish twice', { wishes: [{ cropId: 'chou' }, { cropId: 'chou-ete' }] }, 'Culture demandée deux fois : chou-ete.'],
     ['zero beds', { wishes: [{ cropId: 'tomate', beds: 0 }] }, 'Nombre de planches invalide.'],
     ['fraction', { wishes: [{ cropId: 'tomate', beds: 1.5 }] }, 'Nombre de planches invalide.'],

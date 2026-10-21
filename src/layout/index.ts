@@ -38,6 +38,7 @@ export type {
   CropPlanUnplaced,
   CropPlanOption,
   CropPlan,
+  CropPlanFreeCrop,
 } from './crop-plan-types.js';
 export { solveCropPlan, scoreCropPlan } from './crop-plan.js';
 export {
@@ -47,6 +48,8 @@ export {
   MAX_PLAN_SLOTS,
   MAX_HISTORY_PER_BED,
   MAX_NEIGHBOUR_PAIRS,
+  MAX_CROP_ID_LENGTH,
+  INVALID_CROP_ID,
   NO_BED,
   NO_WISH,
   BED_WITHOUT_ID,

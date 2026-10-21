@@ -115,7 +115,10 @@ function solve(model: PlanModel): CropPlan {
     .map((o, i) => ({ o, i }))
     .sort((x, y) => y.o.score.total - x.o.score.total || x.i - y.i)
     .map((x) => x.o);
-  return { options: ranked.slice(0, model.maxOptions), params: { ...CROP_PLAN_WEIGHTS } };
+  const withoutData = model.crops
+    .filter((c) => c.free)
+    .map(({ crop }) => ({ cropId: crop.id, name: crop.name, text: `${crop.name} : pas de donnée, placé sans rotation ni compagnonnage.` }));
+  return { options: ranked.slice(0, model.maxOptions), params: { ...CROP_PLAN_WEIGHTS }, withoutData };
 }
 
 /**

@@ -16,12 +16,17 @@ export type CropPlanBed = {
 
 /** A crop the owner wants this season. */
 export type CropPlanWish = {
-  /** A catalog id or alias (custom crops included when the caller merges them into `crops`). */
+  /**
+   * A catalog id or alias (custom crops included when the caller merges them into `crops`). Any
+   * other id is a free-name crop: placed, but with no rotation or companion data (`withoutData`).
+   */
   cropId: string;
   /** Beds this crop should take, 1 by default. Two beds of one crop are always two different beds. */
   beds?: number;
   /** Planned sowing date (YYYY-MM-DD); defaults to the plan date. Rotation reads its season. */
   sownOn?: string;
+  /** French name of a crop outside the catalog (a free-name crop); ignored for catalog crops. */
+  name?: string;
 };
 
 export type CropPlanInput = {
@@ -87,7 +92,8 @@ export type CropPlan = {
   options: CropPlanOption[];
   /** Every weight used, flagged as estimates, so the UI can say so. */
   params: Record<string, Param>;
+  /** Wished crops outside the catalog, in wish order, with the « pas de donnée » sentence to show. */
+  withoutData: CropPlanFreeCrop[];
 };
 
-/** A crop resolved from the catalog, kept by the scorer. */
-export type ResolvedWish = { crop: Crop; beds: number; sownOn: string; index: number };
+export type CropPlanFreeCrop = { cropId: string; name: string; text: string };

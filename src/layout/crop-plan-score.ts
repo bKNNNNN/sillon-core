@@ -59,10 +59,11 @@ export class PlanScorer {
     return points;
   }
 
-  /** Families on the bed beyond the first; short crops slip between others and are not counted. */
+  /** Families on the bed beyond the first; short crops slip between others and free crops have none. */
   extraFamilies(list: readonly number[]): number {
     if (list.length < 2) return 0;
-    const families = new Set(list.map((c) => this.model.crops[c]!.crop).filter((c) => !isShortCrop(c)).map((c) => c.family));
+    const counted = list.map((c) => this.model.crops[c]!).filter((c) => !c.free && !isShortCrop(c.crop));
+    const families = new Set(counted.map((c) => c.crop.family));
     return Math.max(0, families.size - 1);
   }
 
