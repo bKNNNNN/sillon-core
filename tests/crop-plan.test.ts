@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CROP_PLAN_WEIGHTS,
+  MAX_IMPROVE_WORK,
   MAX_NEIGHBOUR_PAIRS,
   MAX_PLAN_SLOTS,
   scoreCropPlan,
@@ -8,6 +9,7 @@ import {
   type CropPlanBed,
   type CropPlanInput,
 } from '../src/index.js';
+import { solveCropPlanWithWork } from '../src/layout/crop-plan.js';
 import { beds, byBed, catalog, line, plan, value } from './crop-plan-fixtures.js';
 
 const W = {
@@ -352,9 +354,12 @@ describe('solveCropPlan: size', () => {
     const many = beds(n);
     const neighbours = dense(n);
     const started = performance.now();
-    const result = solveCropPlan({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours, cropsPerBed, wishes: wishesFor(Math.min(n * cropsPerBed, MAX_PLAN_SLOTS - ids.length)) });
-    expect(performance.now() - started).toBeLessThan(2000);
-    const { options } = value(result);
+    const result = solveCropPlanWithWork({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours, cropsPerBed, wishes: wishesFor(Math.min(n * cropsPerBed, MAX_PLAN_SLOTS - ids.length)) });
+    // Plain runs take about 0.3 s; the bound leaves room for coverage instrumentation (about 3 s).
+    expect(performance.now() - started).toBeLessThan(6000);
+    const { plan: solved, work } = value(result);
+    for (const spent of work) expect(spent).toBeLessThanOrEqual(MAX_IMPROVE_WORK * 1.01);
+    const { options } = solved;
     for (const o of options) {
       for (const a of o.assignments) expect(a.cropIds.length).toBeLessThanOrEqual(cropsPerBed);
       expect(o.score.items.reduce((s, i) => s + i.points, 0)).toBe(o.score.total);
@@ -365,11 +370,16 @@ describe('solveCropPlan: size', () => {
     const many = beds(500);
     const neighbours = many.slice(1).map((b) => ['planche-1', b.id] as [string, string]);
     const started = performance.now();
-    const result = solveCropPlan({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours, cropsPerBed: 4, wishes: wishesFor(480) });
-    expect(result.ok).toBe(true);
-    expect(performance.now() - started).toBeLessThan(2000);
+    const { work } = value(solveCropPlanWithWork({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours, cropsPerBed: 4, wishes: wishesFor(480) }));
+    expect(performance.now() - started).toBeLessThan(6000);
+    for (const spent of work) expect(spent).toBeLessThanOrEqual(MAX_IMPROVE_WORK * 1.01);
   });
 
+  it('plans 500 beds in a line before the work budget runs out', () => {
+    const many = beds(500);
+    const { work } = value(solveCropPlanWithWork({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours: line(many), cropsPerBed: 4, wishes: wishesFor(480) }));
+    for (const spent of work) expect(spent).toBeLessThan(MAX_IMPROVE_WORK);
+  });
 
   it('plans 500 beds holding up to 480 wished beds within two seconds', () => {
     const many = beds(500);

@@ -40,7 +40,7 @@ export type {
   CropPlan,
   CropPlanFreeCrop,
 } from './crop-plan-types.js';
-export { solveCropPlan, scoreCropPlan } from './crop-plan.js';
+export { MAX_IMPROVE_WORK, solveCropPlan, scoreCropPlan } from './crop-plan.js';
 export {
   CROP_PLAN_WEIGHTS,
   MAX_CROPS_PER_BED,

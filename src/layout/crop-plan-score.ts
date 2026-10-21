@@ -62,9 +62,12 @@ export class PlanScorer {
   /** Families on the bed beyond the first; short crops slip between others and free crops have none. */
   extraFamilies(list: readonly number[]): number {
     if (list.length < 2) return 0;
-    const counted = list.map((c) => this.model.crops[c]!).filter((c) => !c.free && !isShortCrop(c.crop));
-    const families = new Set(counted.map((c) => c.crop.family));
-    return Math.max(0, families.size - 1);
+    const families: string[] = [];
+    for (const c of list) {
+      const { crop, free } = this.model.crops[c]!;
+      if (!free && !isShortCrop(crop) && !families.includes(crop.family)) families.push(crop.family);
+    }
+    return Math.max(0, families.length - 1);
   }
 
   /** Rotation, families and same-bed companions of one bed holding `list`. */
@@ -89,6 +92,13 @@ export class PlanScorer {
     let points = this.bedPoints(a, state[a]!) + this.bedPoints(b, state[b]!);
     for (const v of this.model.adjacency[a]!) points += this.edgePoints(state[a]!, state[v]!);
     for (const v of this.model.adjacency[b]!) if (v !== a) points += this.edgePoints(state[b]!, state[v]!);
+    return points;
+  }
+
+  /** Every term that involves bed `a` alone: what replacing one of its crops can change. */
+  bedLocalPoints(state: PlanState, a: number): number {
+    let points = this.bedPoints(a, state[a]!);
+    for (const v of this.model.adjacency[a]!) points += this.edgePoints(state[a]!, state[v]!);
     return points;
   }
 
