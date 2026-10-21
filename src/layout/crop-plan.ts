@@ -1,5 +1,6 @@
 import { ok, type Result } from '../result.js';
 import { CROP_PLAN_WEIGHTS, readAssignments, readPlanInput, type PlanModel } from './crop-plan-input.js';
+import { exactFits, exactSearch } from './crop-plan-exact.js';
 import { PlanScorer, type PlanState } from './crop-plan-score.js';
 import type {
   CropPlan,
@@ -127,6 +128,64 @@ function tryReplace(scorer: PlanScorer, budget: Budget, state: PlanState, missin
   return false;
 }
 
+/** Beds holding no crop and beds holding two or more: no bed may stay empty while another is shared. */
+type Loads = { empty: number; shared: number };
+
+const countLoads = (state: PlanState): Loads => ({
+  empty: state.filter((l) => l.length === 0).length,
+  shared: state.filter((l) => l.length > 1).length,
+});
+
+/** Loads after one crop leaves a bed of `from` crops for a bed of `to` crops. */
+function loadsAfter(loads: Loads, from: number, to: number): Loads {
+  return {
+    empty: loads.empty - (to === 0 ? 1 : 0) + (from === 1 ? 1 : 0),
+    shared: loads.shared - (from === 2 ? 1 : 0) + (to === 1 ? 1 : 0),
+  };
+}
+
+/**
+ * Moves crop `i` of bed `a` to bed `b`, which has room and does not hold it yet, when that raises
+ * the score and still leaves no bed empty while another is shared. Returns the new loads, or null.
+ */
+function tryRelocate(scorer: PlanScorer, budget: Budget, state: PlanState, loads: Loads, a: number, i: number, b: number): Loads | null {
+  budget.left--;
+  const listA = state[a]!;
+  const listB = state[b]!;
+  const c = listA[i]!;
+  if (listB.length >= scorer.model.cropsPerBed || listB.includes(c)) return null;
+  const next = loadsAfter(loads, listA.length, listB.length);
+  if (next.empty > 0 && next.shared > 0) return null;
+  if (!charge(scorer, budget, state, [a, b])) return null;
+  const before = scorer.localPoints(state, a, b);
+  state[a] = listA.filter((_, k) => k !== i);
+  state[b] = [...listB, c];
+  if (scorer.localPoints(state, a, b) > before) {
+    state[b] = sorted(state[b]!);
+    return next;
+  }
+  state[a] = listA;
+  state[b] = listB;
+  return null;
+}
+
+function relocatePass(scorer: PlanScorer, budget: Budget, state: PlanState): boolean {
+  let loads = countLoads(state);
+  let changed = false;
+  for (let a = 0; a < state.length && budget.left > 0; a++)
+    for (let b = 0; b < state.length; b++) {
+      if (a === b) continue;
+      for (let i = 0; i < state[a]!.length; i++) {
+        const next = tryRelocate(scorer, budget, state, loads, a, i, b);
+        if (next) {
+          loads = next;
+          changed = true;
+        }
+      }
+    }
+  return changed;
+}
+
 function swapPass(scorer: PlanScorer, budget: Budget, state: PlanState): boolean {
   let changed = false;
   for (let a = 0; a < state.length && budget.left > 0; a++)
@@ -146,18 +205,20 @@ function replacePass(scorer: PlanScorer, budget: Budget, state: PlanState): bool
 }
 
 /**
- * Exchanges two placed crops between two beds, or gives a placed crop's place to a wished crop
- * left out, while that raises the score, until no move does or the work budget is spent.
+ * Gives a placed crop's place to a wished crop left out, moves a crop to a bed with room, or
+ * exchanges two placed crops between two beds, while that raises the score, until no move does or
+ * the work budget is spent.
  */
-function improve(scorer: PlanScorer, start: PlanState): { state: PlanState; work: number } {
+function improve(scorer: PlanScorer, start: PlanState): { state: PlanState; work: number; cut: boolean } {
   const state = start.map((list) => [...list]);
   const budget: Budget = { left: MAX_IMPROVE_WORK };
   for (let pass = 0; pass < MAX_MOVE_PASSES && budget.left > 0; pass++) {
     const replaced = replacePass(scorer, budget, state);
+    const relocated = relocatePass(scorer, budget, state);
     const swapped = swapPass(scorer, budget, state);
-    if (!replaced && !swapped) break;
+    if (!replaced && !relocated && !swapped) break;
   }
-  return { state, work: MAX_IMPROVE_WORK - budget.left };
+  return { state, work: MAX_IMPROVE_WORK - budget.left, cut: budget.left <= 0 };
 }
 
 function toOption(scorer: PlanScorer, strategy: CropPlanStrategy, state: PlanState): CropPlanOption {
@@ -173,41 +234,55 @@ function toOption(scorer: PlanScorer, strategy: CropPlanStrategy, state: PlanSta
   return { strategy, assignments, unplaced, score: scorer.breakdown(state) };
 }
 
-function solve(model: PlanModel): { plan: CropPlan; work: number[] } {
+type Solved = { plan: CropPlan; work: number[]; exactWork: number };
+
+function solve(model: PlanModel): Solved {
   const scorer = new PlanScorer(model);
   const seen = new Set<string>();
-  const options: CropPlanOption[] = [];
+  const found: { strategy: CropPlanStrategy; state: PlanState; total: number }[] = [];
   const work: number[] = [];
   for (const strategy of STRATEGIES) {
     const improved = improve(scorer, greedy(scorer, orderFor(strategy, scorer)));
-    const { state } = improved;
     work.push(improved.work);
-    const key = JSON.stringify(state);
+    const key = JSON.stringify(improved.state);
     if (seen.has(key)) continue;
     seen.add(key);
-    options.push(toOption(scorer, strategy, state));
+    found.push({ strategy, state: improved.state, total: scorer.breakdown(improved.state).total });
   }
-  const ranked = options
-    .map((o, i) => ({ o, i }))
-    .sort((x, y) => y.o.score.total - x.o.score.total || x.i - y.i)
-    .map((x) => x.o);
+  let approx = true;
+  let exactWork = 0;
+  if (exactFits(model.beds.length, model.cropsPerBed)) {
+    const top = found.reduce((a, b) => (b.total > a.total ? b : a));
+    const exact = exactSearch(scorer, top.state, top.total);
+    exactWork = exact.work;
+    approx = !exact.complete;
+    const key = JSON.stringify(exact.state);
+    if (!seen.has(key)) found.unshift({ strategy: 'exact', state: exact.state, total: exact.total });
+  }
+  const options = found
+    .map((f, i) => ({ f, i }))
+    .sort((x, y) => y.f.total - x.f.total || x.i - y.i)
+    .slice(0, model.maxOptions)
+    .map(({ f }) => toOption(scorer, f.strategy, f.state));
   const withoutData = model.crops
     .filter((c) => c.free)
     .map(({ crop }) => ({ cropId: crop.id, name: crop.name, text: `${crop.name} : pas de donnée, placé sans rotation ni compagnonnage.` }));
-  return { plan: { options: ranked.slice(0, model.maxOptions), params: { ...CROP_PLAN_WEIGHTS }, withoutData }, work };
+  return { plan: { options, approx, params: { ...CROP_PLAN_WEIGHTS }, withoutData }, work, exactWork };
 }
 
-/** `solveCropPlan` plus the work units each strategy's moves spent, for tests. Not exported from the package root. */
-export function solveCropPlanWithWork(input: CropPlanInput): Result<{ plan: CropPlan; work: number[] }> {
+/** `solveCropPlan` plus the work units each strategy's moves and the exact search spent, for tests. Not exported from the package root. */
+export function solveCropPlanWithWork(input: CropPlanInput): Result<Solved> {
   const model = readPlanInput(input);
   return model.ok ? ok(solve(model.value)) : model;
 }
 
 /**
- * First crop plan for free beds: a greedy placement of the wished crops followed by swaps and
- * replacements within a fixed work budget, scored on rotation history, companions (same bed and neighbouring beds) and families
- * sharing a bed. Up to three distinct options, each with a French score breakdown. Rotation is
- * advice, never a ban: a crop is placed even when every bed breaks it. Pure and deterministic.
+ * First crop plan for free beds, scored on rotation history, companions (same bed and neighbouring
+ * beds) and families sharing a bed. A greedy placement in three orders, improved by replace,
+ * relocate and swap moves within a fixed work budget. Gardens of at most `MAX_EXACT_BEDS` beds and
+ * `MAX_EXACT_SLOTS` places also get an exact branch and bound, so their best option is the optimum
+ * (`approx: false`) unless its own budget runs out. Up to three distinct options, each with a
+ * French score breakdown. Rotation is advice, never a ban. Pure and deterministic.
  */
 export function solveCropPlan(input: CropPlanInput): Result<CropPlan> {
   const solved = solveCropPlanWithWork(input);

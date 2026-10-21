@@ -41,6 +41,7 @@ export type {
   CropPlanFreeCrop,
 } from './crop-plan-types.js';
 export { MAX_IMPROVE_WORK, solveCropPlan, scoreCropPlan } from './crop-plan.js';
+export { MAX_EXACT_BEDS, MAX_EXACT_SLOTS, MAX_EXACT_WORK } from './crop-plan-exact.js';
 export {
   CROP_PLAN_WEIGHTS,
   MAX_CROPS_PER_BED,

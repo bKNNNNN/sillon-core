@@ -46,8 +46,12 @@ export type CropPlanInput = {
   maxOptions?: number;
 };
 
-/** How one option was built: wishes in the owner's order, hardest to place first, or best-connected companions first. */
-export type CropPlanStrategy = 'priority' | 'constrained' | 'companions';
+/**
+ * How one option was built: wishes in the owner's order, hardest to place first, best-connected
+ * companions first, or found by the exact search (`exact`, only when it beats every other option;
+ * proven best when the plan says `approx: false`).
+ */
+export type CropPlanStrategy = 'priority' | 'constrained' | 'companions' | 'exact';
 
 export type ScoreKind = 'rotation' | 'companions' | 'families' | 'unplaced';
 
@@ -90,6 +94,13 @@ export type CropPlanOption = {
 export type CropPlan = {
   /** Best total first; ties keep the strategy order priority, constrained, companions. */
   options: CropPlanOption[];
+  /**
+   * false when the first option is proven best among every plan that fills as many places (the
+   * exact search finished); true when the garden is too large for the exact search
+   * (`MAX_EXACT_BEDS` beds, `MAX_EXACT_SLOTS` places) or its work budget ran out first. Then the
+   * options are the best found, not proven best.
+   */
+  approx: boolean;
   /** Every weight used, flagged as estimates, so the UI can say so. */
   params: Record<string, Param>;
   /** Wished crops outside the catalog, in wish order, with the « pas de donnée » sentence to show. */

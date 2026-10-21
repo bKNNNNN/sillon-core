@@ -89,7 +89,7 @@ describe('solveCropPlan: exact search on small gardens', () => {
     );
   });
 
-  it('finds the optimum the local moves miss and labels it optimal', () => {
+  it('finds the optimum the local moves miss and labels it exact', () => {
     // Four squares in a ring, two crops each: the exact search must reach the brute-force best.
     const four: CropPlanInput = {
       beds: [
@@ -108,7 +108,7 @@ describe('solveCropPlan: exact search on small gardens', () => {
     expect(solved.approx).toBe(false);
     const top = Math.max(...allPlans(four).filter((p) => placed(p) === 8).map((p) => value(scoreCropPlan(four, p)).total));
     expect(solved.options[0]!.score.total).toBe(top);
-    for (const o of solved.options) expect(['priority', 'constrained', 'companions', 'optimal']).toContain(o.strategy);
+    for (const o of solved.options) expect(['priority', 'constrained', 'companions', 'exact']).toContain(o.strategy);
   });
 
   it('flags a plan too large for the exact search as approximate', () => {
@@ -129,12 +129,13 @@ describe('solveCropPlan: exact search on small gardens', () => {
     const input: CropPlanInput = { beds: many, crops, sownOn: '2026-04-01', neighbours: line(many), cropsPerBed: 2, wishes: crops.map((c) => ({ cropId: c.id })) };
     const started = performance.now();
     const { plan: solved, exactWork } = value(solveCropPlanWithWork(input));
-    expect(performance.now() - started).toBeLessThan(6000);
+    // About 1 s plain; the bound leaves room for coverage instrumentation.
+    expect(performance.now() - started).toBeLessThan(15000);
     expect(exactWork).toBeLessThanOrEqual(MAX_EXACT_WORK * 1.01);
     expect(solved.approx).toBe(true);
     expect(placed(solved.options[0]!.assignments)).toBe(12);
     expect(solveCropPlan(input)).toEqual(solveCropPlan(input));
-  });
+  }, 60000);
 });
 
 describe('solveCropPlan: relocate move', () => {
