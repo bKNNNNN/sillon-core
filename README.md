@@ -13,6 +13,7 @@ Le moteur agronomique de Sillon, en TypeScript. Il ne contient que des calculs :
 - `validatePlanting`, `isValidCivilDate` et `isTooFarInFuture` refusent les dates impossibles, les dates dans le futur et les repiquages avant semis. Les messages d'erreur sont en français.
 - `homographyFromQuad`, `invertHomography`, `polygonArea` et `polygonPerimeter` redressent une photo du jardin et mesurent les planches (voir « Géométrie du plan »).
 - `generateLayout` trace des planches, des carrés ou des buttes sur un terrain nu, avec les allées, la surface cultivée et le nombre de plants par culture (voir « Plan d'un terrain nu »).
+- `solveCropPlan` propose jusqu'à trois répartitions des cultures sur les planches, en tenant compte de la rotation, du compagnonnage et des familles, avec le détail du score (voir « Premier plan de cultures »).
 - `fetchForecast` et `fetchArchive` interrogent l'API Open-Meteo pour le lieu que tu passes. En cas de panne, ils renvoient `{ ok: false, error: 'Météo indisponible.' }` au lieu de lever une exception.
 
 ## Installation
@@ -152,6 +153,37 @@ const plan = generateLayout({
 - `exposureNote` dit où mettre les cultures hautes. Planches nord-sud : au bout nord. Planches est-ouest : sur la planche la plus au nord. Ces deux cas suivent l'Oregon State University Extension (`EXPOSURE_SOURCE`). Les planches en biais, les carrés et les buttes étendent la même règle et sont marqués comme estimation. Sans nord, la note le demande.
 
 Refus, avec un message en français : allée nulle, négative ou de plus de 10 m, dimension invalide, angle non fini, contour invalide (mêmes messages que `polygonArea`), terrain de plus de 10 km, contour de plus de 200 coins, terrain trop petit pour une seule planche, plus de 500 planches.
+
+## Premier plan de cultures
+
+`solveCropPlan` répartit les cultures que tu veux sur les planches libres et rend jusqu'à trois options, la meilleure d'abord, chacune avec le détail de son score en français. Il ne trace rien : il dit quelle culture va sur quelle planche. Le calcul est déterministe.
+
+```ts
+const voisines = neighbouringBeds(plan.value.beds, 41); // planches à une allée l'une de l'autre
+const options = solveCropPlan({
+  beds: [
+    { id: 'c1', label: 'Carré 1', history: [{ species: 'tomate', sownOn: '2026-03-20' }] },
+    { id: 'c2', label: 'Carré 2' },
+  ],
+  wishes: [{ cropId: 'tomate' }, { cropId: 'haricot', beds: 1 }], // la plus voulue d'abord
+  crops, // les cultures de sillon-cultures, lues par parseCrops
+  sownOn: '2027-04-01', // date de semis prévue, lue pour la rotation
+  neighbours: [['c1', 'c2']], // ou voisines.value
+});
+// options.value.options[0].assignments : la tomate sur Carré 2, le haricot sur Carré 1
+// options.value.options[0].score.items : une phrase par point gagné ou perdu
+```
+
+- Rotation : la règle de `rotationAdvice`, sur l'historique de chaque planche. Une culture qui revient trop tôt coûte des points, mais elle est quand même placée si aucune planche ne convient : la rotation est un conseil, pas une interdiction. Les cultures courtes (radis) ne comptent pas.
+- Compagnonnage : les listes `goodCompanions` et `badCompanions` des cultures, entre cultures d'une même planche et entre planches voisines (`neighbours`). Une mauvaise association l'emporte sur une bonne. Ces listes sont du savoir de jardinier, sans source : un conseil, jamais une alerte.
+- Familles : avec `cropsPerBed` au-dessus de 1, chaque famille de plus sur une planche coûte un point, parce que la rotation devient plus dure à suivre. Chaque planche reçoit une culture avant qu'une planche n'en reçoive deux.
+- Méthode : un placement glouton dans trois ordres (le tien, les cultures les plus difficiles à caser d'abord, celles qui ont le plus de compagnons d'abord), puis des échanges deux à deux tant qu'un échange améliore le score. Les options identiques sont fusionnées. Le modèle de langage de l'app peut expliquer et classer ces options ; il ne produit jamais de placement.
+- Les poids sont dans `CROP_PLAN_WEIGHTS` (rotation -10, bon voisin +1, mauvais voisin -2, famille en plus -1, emplacement manquant -5), tous marqués comme estimation et recopiés dans `params`.
+- Une culture hors catalogue est placée sans rotation ni compagnonnage ; `withoutData` la liste avec la phrase « pas de donnée » à montrer.
+- `scoreCropPlan` recalcule le score d'un plan modifié à la main, avec les mêmes règles.
+- `neighbouringBeds(beds, écartMax)` trouve les planches dont les contours sont à moins de `écartMax` cm (la largeur d'allée, plus un peu pour l'arrondi).
+
+Refus, avec un message en français : aucune planche, planche sans identifiant ou en double, aucune culture, culture sans nom ou demandée deux fois, nombre de planches non entier ou nul, date invalide (plan, souhait ou historique), `cropsPerBed` hors de 1 à 4, `maxOptions` hors de 1 à 3, voisine inconnue ou planche voisine d'elle-même, plan trop grand (plus de 500 planches, 100 cultures, 500 emplacements demandés, 500 lignes d'historique par planche ou 5 000 paires de voisines).
 
 ## Données de cultures
 
