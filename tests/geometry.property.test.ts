@@ -5,6 +5,7 @@ import {
   invertHomography,
   polygonArea,
   polygonPerimeter,
+  projectPoint,
   projectPolygon,
   type Homography,
   type Point,
@@ -21,6 +22,31 @@ const TOLERANCE = 0.001; // 0.1 %, tech lead plan section 7.
 /** A pinhole camera looking down at the ground plane: a realistic, random photo of a bed. */
 type Camera = { tilt: number; pan: number; roll: number; height: number; back: number; focal: number };
 
+/**
+ * Central projection of one ground point of a w x h bed. A point behind the lens (depth < 0) still
+ * gets a photo position, the mirror one, which lies on the sky side of the horizon.
+ */
+function shoot(cam: Camera, w: number, h: number, g: Point): { photo: Point; depth: number } {
+  // World point relative to the camera, centred on the bed.
+  const px = g.x - w / 2;
+  const py = g.y - h / 2 + cam.back;
+  const pz = -cam.height;
+  // Pan around the vertical axis, then tilt around the camera x axis, then roll.
+  const x1 = Math.cos(cam.pan) * px - Math.sin(cam.pan) * py;
+  const y1 = Math.sin(cam.pan) * px + Math.cos(cam.pan) * py;
+  const depth = Math.cos(cam.tilt) * y1 - Math.sin(cam.tilt) * pz;
+  const up = Math.sin(cam.tilt) * y1 + Math.cos(cam.tilt) * pz;
+  const u = (cam.focal * x1) / depth;
+  const v = (-cam.focal * up) / depth;
+  return {
+    photo: {
+      x: 2000 + Math.cos(cam.roll) * u - Math.sin(cam.roll) * v,
+      y: 1500 + Math.sin(cam.roll) * u + Math.cos(cam.roll) * v,
+    },
+    depth,
+  };
+}
+
 function photograph(cam: Camera, w: number, h: number): Quad | null {
   const ground: Point[] = [
     { x: 0, y: 0 },
@@ -28,26 +54,9 @@ function photograph(cam: Camera, w: number, h: number): Quad | null {
     { x: w, y: h },
     { x: 0, y: h },
   ];
-  const out: Point[] = [];
-  for (const g of ground) {
-    // World point relative to the camera, centred on the bed.
-    const px = g.x - w / 2;
-    const py = g.y - h / 2 + cam.back;
-    const pz = -cam.height;
-    // Pan around the vertical axis, then tilt around the camera x axis, then roll.
-    const x1 = Math.cos(cam.pan) * px - Math.sin(cam.pan) * py;
-    const y1 = Math.sin(cam.pan) * px + Math.cos(cam.pan) * py;
-    const depth = Math.cos(cam.tilt) * y1 - Math.sin(cam.tilt) * pz;
-    const up = Math.sin(cam.tilt) * y1 + Math.cos(cam.tilt) * pz;
-    if (depth < 10) return null; // behind or too close to the lens
-    const u = (cam.focal * x1) / depth;
-    const v = (-cam.focal * up) / depth;
-    out.push({
-      x: 2000 + Math.cos(cam.roll) * u - Math.sin(cam.roll) * v,
-      y: 1500 + Math.sin(cam.roll) * u + Math.cos(cam.roll) * v,
-    });
-  }
-  return out as unknown as Quad;
+  const shots = ground.map((g) => shoot(cam, w, h, g));
+  if (shots.some((s) => s.depth < 10)) return null; // behind or too close to the lens
+  return shots.map((s) => s.photo) as unknown as Quad;
 }
 
 const camera = fc.record({
@@ -137,6 +146,37 @@ describe('homography round trip on synthetic rectangles', () => {
         },
       ),
       { numRuns: 300 },
+    );
+  });
+
+  it('a photo point is on the ground exactly when its ground point is in front of the lens', () => {
+    fc.assert(
+      fc.property(
+        camera,
+        side,
+        side,
+        fc.double({ min: -5000, max: 5000, noNaN: true }),
+        fc.double({ min: -5000, max: 5000, noNaN: true }),
+        (cam, w, h, gx, gy) => {
+          const shot = photograph(cam, w, h);
+          fc.pre(shot !== null);
+          const g = { x: gx, y: gy };
+          const { photo, depth } = shoot(cam, w, h, g);
+          fc.pre(Math.abs(depth) > 10 && Number.isFinite(photo.x) && Number.isFinite(photo.y));
+          const rect: Quad = [
+            { x: 0, y: 0 },
+            { x: w, y: 0 },
+            { x: w, y: h },
+            { x: 0, y: h },
+          ];
+          const toGround = value(homographyFromQuad(shot!, rect));
+          const toPhoto = value(invertHomography(toGround));
+          // In front: the photo point lands on the ground. Behind: it is sky, and the ground point has no photo.
+          expect(projectPoint(toGround, photo).ok).toBe(depth > 0);
+          expect(projectPoint(toPhoto, g).ok).toBe(depth > 0);
+        },
+      ),
+      { numRuns: 1000 },
     );
   });
 });

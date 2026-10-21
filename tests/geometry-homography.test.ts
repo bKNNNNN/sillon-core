@@ -30,10 +30,10 @@ describe('homographyFromQuad', () => {
     photo.forEach((p, i) => near(value(projectPoint(h, p)), ground[i]!));
   });
 
-  it('is normalised with h33 = 1 and has nine finite entries', () => {
+  it('is normalised with |h33| = 1 and has nine finite entries', () => {
     const h = value(homographyFromQuad(photo, ground));
     expect(h).toHaveLength(9);
-    expect(h[8]).toBe(1);
+    expect(Math.abs(h[8])).toBe(1);
     expect(h.every(Number.isFinite)).toBe(true);
   });
 
@@ -119,6 +119,17 @@ describe('invertHomography', () => {
     expect(invertHomography(flat)).toEqual({ ok: false, error: 'Transformation impossible à inverser.' });
   });
 
+  it('inverts a valid photo homography whose entries span many orders of magnitude', () => {
+    // Found by the property test: pixel offsets near 800 next to coefficients near 1e-5.
+    const h: Homography = [
+      0.0336081136303884, 0.030452372136339435, 682.7837727392216, 1.947643399566958e-18, -0.002800676135865714,
+      818.5333711078822, 0, 0.00004060316284845266, 1,
+    ];
+    const inv = value(invertHomography(h));
+    const p = { x: 10, y: 20 };
+    near(value(projectPoint(inv, value(projectPoint(h, p)))), p, 1e-6);
+  });
+
   it('refuses a matrix that is not nine finite numbers', () => {
     expect(invertHomography([1, 0, 0, 0, 1, 0, 0, 0] as unknown as Homography).ok).toBe(false);
     expect(invertHomography([1, 0, 0, 0, Number.NaN, 0, 0, 0, 1]).ok).toBe(false);
@@ -150,5 +161,76 @@ describe('projectPoint and projectPolygon', () => {
     out.forEach((p, i) => near(p, ground[i]!));
     const horizon: Homography = [1, 0, 0, 0, 1, 0, 0, 1, 1];
     expect(projectPolygon(horizon, [{ x: 0, y: 0 }, { x: 1, y: -1 }]).ok).toBe(false);
+  });
+});
+
+describe('the horizon of a photo', () => {
+  // A bed seen from its short side: the edges converge at photo y = 350, the horizon.
+  const shot = quad(400, 500, 600, 500, 800, 800, 200, 800);
+  const bed = quad(0, 0, 200, 0, 200, 300, 0, 300);
+  const sky = { ok: false, error: 'Point à l’horizon, hors du sol.' };
+
+  it('keeps w positive inside the photo quad even when the photo origin is in the sky', () => {
+    // The photo origin (top left) is above the horizon, so h33 < 0 once the sign is right.
+    const h = value(homographyFromQuad(shot, bed));
+    const w = (p: Point) => h[6] * p.x + h[7] * p.y + h[8];
+    shot.forEach((p) => expect(w(p)).toBeGreaterThan(0));
+    expect(h[8]).toBe(-1);
+  });
+
+  it('puts the horizon where the bed edges converge', () => {
+    const h = value(homographyFromQuad(shot, bed));
+    expect(projectPoint(h, { x: 500, y: 350 })).toEqual(sky);
+  });
+
+  it('refuses a point just past the horizon and any point of the sky', () => {
+    const h = value(homographyFromQuad(shot, bed));
+    [349, 300, 100, 0, -1000].forEach((y) => expect(projectPoint(h, { x: 500, y })).toEqual(sky));
+  });
+
+  it('still projects a point just below the horizon, far away on the ground', () => {
+    const h = value(homographyFromQuad(shot, bed));
+    const far = value(projectPoint(h, { x: 500, y: 351 }));
+    expect(far.x).toBeCloseTo(100, 6);
+    // Ground y grows towards the bottom of the photo, so the far ground lies at large negative y.
+    expect(far.y).toBeLessThan(-10_000);
+    near(value(projectPoint(h, { x: 500, y: 650 })), { x: 100, y: 225 });
+  });
+
+  it('refuses an outline that crosses the horizon or sits in the sky', () => {
+    const h = value(homographyFromQuad(shot, bed));
+    const crossing = [
+      { x: 400, y: 600 },
+      { x: 600, y: 600 },
+      { x: 600, y: 200 },
+      { x: 400, y: 200 },
+    ];
+    expect(projectPolygon(h, crossing)).toEqual(sky);
+    const inSky = [
+      { x: 400, y: 0 },
+      { x: 600, y: 0 },
+      { x: 600, y: 100 },
+      { x: 400, y: 100 },
+    ];
+    expect(projectPolygon(h, inSky)).toEqual(sky);
+  });
+
+  it('keeps the sides apart in the inverse: a ground point behind the camera has no photo', () => {
+    const h = value(homographyFromQuad(shot, bed));
+    const inv = value(invertHomography(h));
+    // Far ground beyond the bed shows just below the horizon.
+    [150, -420, -67_000].forEach((y) => {
+      const onPhoto = value(projectPoint(inv, { x: 100, y }));
+      expect(onPhoto.y).toBeGreaterThan(350);
+      near(value(projectPoint(h, onPhoto)), { x: 100, y }, 1e-6 * Math.max(1, Math.abs(y)));
+    });
+    // The camera stands over ground y = 450: from there on, the ground is behind the lens.
+    [450, 451, 1000, 1e6].forEach((y) => expect(projectPoint(inv, { x: 100, y })).toEqual(sky));
+  });
+
+  it('gives back the same oriented matrix when inverted twice', () => {
+    const h = value(homographyFromQuad(shot, bed));
+    const twice = value(invertHomography(value(invertHomography(h))));
+    twice.forEach((v, i) => expect(v).toBeCloseTo(h[i]!, 9));
   });
 });

@@ -23,12 +23,26 @@ function norm(h: readonly number[]): number {
   return Math.hypot(...h);
 }
 
-/** Scales h33 to 1 when it is not zero, otherwise to unit Frobenius norm. */
+/**
+ * Scales |h33| to 1 when it is not zero, otherwise to unit Frobenius norm. The factor is always
+ * positive: the sign of w = h31·x + h32·y + h33 tells the ground side of the vanishing line from the
+ * sky side, so it must survive normalisation.
+ */
 function normalise(h: Matrix3): Result<Matrix3> {
   const n = norm(h);
   if (!(n > 0) || !h.every(Number.isFinite)) return fail(NOT_INVERTIBLE);
-  const k = Math.abs(h[8]) > EPS * n ? h[8] : n;
+  const k = Math.abs(h[8]) > EPS * n ? Math.abs(h[8]) : n;
   return ok(h.map((v) => v / k) as unknown as Matrix3);
+}
+
+/** Flips the whole matrix when needed so that w > 0 at `inside`, a point known to have a ground image. */
+function orient(h: Matrix3, inside: Point): Matrix3 {
+  const w = h[6] * inside.x + h[7] * inside.y + h[8];
+  return w < 0 ? (h.map((v) => -v) as unknown as Matrix3) : h;
+}
+
+function centroid(q: Quad): Point {
+  return { x: q.reduce((s, p) => s + p.x, 0) / 4, y: q.reduce((s, p) => s + p.y, 0) / 4 };
 }
 
 /**
@@ -36,8 +50,7 @@ function normalise(h: Matrix3): Result<Matrix3> {
  * (thousands) and centimetres solve with the same precision.
  */
 function conditioner(q: Quad): { points: Point[]; forward: Matrix3; backward: Matrix3 } {
-  const cx = q.reduce((s, p) => s + p.x, 0) / 4;
-  const cy = q.reduce((s, p) => s + p.y, 0) / 4;
+  const { x: cx, y: cy } = centroid(q);
   const mean = q.reduce((s, p) => s + Math.hypot(p.x - cx, p.y - cy), 0) / 4;
   const s = Math.SQRT2 / mean;
   return {
@@ -86,6 +99,8 @@ function checkQuad(q: Quad): Result<Quad> {
  * Direct linear transform from four point pairs: the homography H with H·from[i] = to[i].
  * Typical use: `from` = corners tapped on the photo, `to` = the same corners on the ground in cm.
  * Both quads must be convex and listed in the same tour order; the winding may differ (a photo has y down).
+ * The result is oriented so that w > 0 on the side of the vanishing line that holds `from`: convexity
+ * of both quads puts all four corners, hence their centroid, on that one side.
  */
 export function homographyFromQuad(from: Quad, to: Quad): Result<Homography> {
   const src = checkQuad(from);
@@ -105,10 +120,25 @@ export function homographyFromQuad(from: Quad, to: Quad): Result<Homography> {
   const h = solve(rows);
   if (h === null) return fail(NOT_CONVEX);
   const conditioned = [...h, 1] as unknown as Matrix3;
-  return normalise(multiply(d.backward, multiply(conditioned, s.forward)));
+  return normalise(orient(multiply(d.backward, multiply(conditioned, s.forward)), centroid(src.value)));
 }
 
-/** The inverse homography (photo to ground becomes ground to photo). */
+/**
+ * |det| can reach at most the product of the row norms, and of the column norms (Hadamard). The smaller
+ * of the two is the scale to compare against: a photo homography mixes pixel offsets in its last column
+ * with tiny coefficients elsewhere, so a bound built on the whole matrix norm would call it singular.
+ */
+function hadamardBound(h: Matrix3): number {
+  const rows = norm(h.slice(0, 3)) * norm(h.slice(3, 6)) * norm(h.slice(6, 9));
+  const cols = norm([h[0], h[3], h[6]]) * norm([h[1], h[4], h[7]]) * norm([h[2], h[5], h[8]]);
+  return Math.min(rows, cols);
+}
+
+/**
+ * The inverse homography (photo to ground becomes ground to photo). It keeps the orientation: if
+ * H·p = w·(q, 1) with w > 0, then H⁻¹·(q, 1) = (1/w)·(p, 1), so every ground point that came from the
+ * photo's ground side gets w > 0 again. Dividing by the determinant, whatever its sign, is what keeps it.
+ */
 export function invertHomography(h: Homography): Result<Homography> {
   if (!Array.isArray(h) || h.length !== 9 || !h.every(Number.isFinite)) return fail(NOT_INVERTIBLE);
   const [a, b, c, d, e, f, g, i, j] = h;
@@ -124,17 +154,19 @@ export function invertHomography(h: Homography): Result<Homography> {
     a * e - b * d,
   ];
   const det = a * adj[0] + b * adj[3] + c * adj[6];
-  const n = norm(h);
-  if (!(Math.abs(det) > EPS * n * n * n)) return fail(NOT_INVERTIBLE);
+  if (!(Math.abs(det) > EPS * hadamardBound(h))) return fail(NOT_INVERTIBLE);
   return normalise(adj.map((v) => v / det) as unknown as Matrix3);
 }
 
-/** Applies H to one point. Fails for a point on the vanishing line, which has no image. */
+/**
+ * Applies H to one point. Fails for a point on the vanishing line or beyond it (w <= 0): such a point
+ * (sky, or anything past the horizon) has no image on the ground, only a mirror image behind the camera.
+ */
 export function projectPoint(h: Homography, p: Point): Result<Point> {
   if (!isFinitePoint(p)) return fail(INVALID_COORDINATE);
   const w = h[6] * p.x + h[7] * p.y + h[8];
   const scale = Math.abs(h[6] * p.x) + Math.abs(h[7] * p.y) + Math.abs(h[8]);
-  if (!(Math.abs(w) > EPS * scale)) return fail(AT_HORIZON);
+  if (!(w > EPS * scale)) return fail(AT_HORIZON);
   const x = (h[0] * p.x + h[1] * p.y + h[2]) / w;
   const y = (h[3] * p.x + h[4] * p.y + h[5]) / w;
   return Number.isFinite(x) && Number.isFinite(y) ? ok({ x, y }) : fail(AT_HORIZON);
