@@ -66,7 +66,8 @@ export function placeSquares(ring: readonly Point[], o: GridOptions): Placed {
 /**
  * Round mounds (buttes) in staggered rows: centres 'size + aisle' apart in every direction, rows
  * shifted by half a pitch. A mound is kept when its bounding square fits with its border, which keeps
- * at least the border around the circle (a little more at the diagonals).
+ * at least the border around the circle (a little more at the diagonals). Both staggers are tried
+ * (first row shifted or not) and the one holding more mounds wins, the unshifted one on a tie.
  */
 export function placeMounds(ring: readonly Point[], o: GridOptions): Placed {
   const b = boundsOf(ring);
@@ -82,19 +83,25 @@ export function placeMounds(ring: readonly Point[], o: GridOptions): Placed {
   if (rows > MAX_BEDS || perRow > MAX_BEDS) return TOO_MANY;
   const v = b.minY + reach + (spanV - (rows - 1) * rowPitch) / 2;
   const u = b.minX + reach + (spanU - (perRow - 1) * pitch) / 2;
-  const beds: LocalBed[] = [];
-  for (let i = 0; i < rows; i++) {
-    const cv = v + i * rowPitch;
-    const runs = stripIntervals(ring, cv - reach, cv + reach);
-    const shift = i % 2 === 0 ? 0 : pitch / 2;
-    for (let k = i % 2 === 0 ? 0 : -1; k < perRow; k++) {
-      const cu = u + shift + k * pitch;
-      if (!fitsIn(runs, cu - reach, cu + reach)) continue;
-      beds.push({ shape: 'mound', u0: cu - r, u1: cu + r, v0: cv - r, v1: cv + r });
-      if (beds.length > MAX_BEDS) return TOO_MANY;
+  const runs = Array.from({ length: rows }, (_, i) => stripIntervals(ring, v + i * rowPitch - reach, v + i * rowPitch + reach));
+  const pattern = (shifted: 0 | 1): Placed => {
+    const beds: LocalBed[] = [];
+    for (let i = 0; i < rows; i++) {
+      const cv = v + i * rowPitch;
+      const odd = i % 2 !== shifted;
+      for (let k = odd ? -1 : 0; k < perRow; k++) {
+        const cu = u + (odd ? pitch / 2 : 0) + k * pitch;
+        if (!fitsIn(runs[i]!, cu - reach, cu + reach)) continue;
+        beds.push({ shape: 'mound', u0: cu - r, u1: cu + r, v0: cv - r, v1: cv + r });
+        if (beds.length > MAX_BEDS) return TOO_MANY;
+      }
     }
-  }
-  return beds;
+    return beds;
+  };
+  const first = pattern(0);
+  const second = pattern(1);
+  if (first === TOO_MANY || second === TOO_MANY) return TOO_MANY;
+  return second.length > first.length ? second : first;
 }
 
 /** Outline of a local bed in the bed frame, counter-clockwise. */

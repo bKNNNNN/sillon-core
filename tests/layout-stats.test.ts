@@ -137,3 +137,24 @@ describe('exposureNote', () => {
     for (const t of texts) expect(t).not.toMatch(/—/);
   });
 });
+
+describe('layout stats with the cultures data', () => {
+  it('takes crops straight from parseCrops and keeps each spacing source', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { parseCrops } = await import('../src/index.js');
+    const crops = parseCrops(readFileSync(new URL('./fixtures/cultures-v0.2.0.yaml', import.meta.url), 'utf8'));
+    const s = run({ crops }).stats;
+    expect(s.crops).toHaveLength(crops.length);
+    for (const [i, c] of s.crops.entries()) {
+      const crop = crops[i]!;
+      expect(c.cropId).toBe(crop.id);
+      if (crop.spacingCm === undefined) {
+        expect(c.perBed).toBeNull();
+        continue;
+      }
+      expect(c.spacing).toEqual(crop.spacingCm);
+      expect(Boolean(c.spacing!.source) || c.spacing!.estimate === true).toBe(true);
+      expect(c.totalPlants).toBeGreaterThan(0);
+    }
+  });
+});
