@@ -11,6 +11,7 @@ Le moteur agronomique de Sillon, en TypeScript. Il ne contient que des calculs :
 - `rotationWarning` prévient quand une planche a porté une culture de la même famille lors d'une saison précédente (une saison est une année civile) : quatre ans pour les solanacées et les brassicacées, trois ans pour les autres familles. Dans une même saison, l'alerte ne part que pour une succession sur le même sol : une autre culture de la même famille, semée plus tôt et déjà terminée avant le nouveau semis (récoltée à cette date ou avant, ou close en `done` ou `failed`), comme une pomme de terre après des tomates récoltées ou un chou d'hiver après un chou d'été récolté. Deux cultures de la même famille qui poussent en même temps (ail et poireau, deux semis d'épinard) ne déclenchent rien, pas plus que deux plantations de la même culture. Une culture courte (première récolte en 45 jours au plus, comme le radis ou l'épinard) ne déclenche pas d'alerte et n'en provoque pas pour la culture suivante. `rotationAdvice` donne le détail (famille, dernière saison, durée retenue) et signale les brassicacées, à qui s'ajoute le conseil sur le pH du sol. Les durées sont dans `ROTATION_RULES`, avec leur source ou la mention d'estimation.
 - `seedLotOutlook` estime si un lot de graines germe encore bien d'après son âge et la durée de vie des graines de l'espèce. Il distingue un lot sans année (`no-year`) d'une espèce sans durée de vie connue (`no-lifespan`), donne l'année `goodUntil` (« Bonne jusqu'en 2030 ») et signale `lastSafeSeason` l'année où le lot atteint sa durée de vie (« Dernière saison sûre »). Une année de récolte postérieure à l'année en cours est traitée comme inconnue. `germinationOutlook` reste disponible sous sa forme courte.
 - `validatePlanting`, `isValidCivilDate` et `isTooFarInFuture` refusent les dates impossibles, les dates dans le futur et les repiquages avant semis. Les messages d'erreur sont en français.
+- `homographyFromQuad`, `invertHomography`, `polygonArea` et `polygonPerimeter` redressent une photo du jardin et mesurent les planches (voir « Géométrie du plan »).
 - `fetchForecast` et `fetchArchive` interrogent l'API Open-Meteo pour le lieu que tu passes. En cas de panne, ils renvoient `{ ok: false, error: 'Météo indisponible.' }` au lieu de lever une exception.
 
 ## Installation
@@ -111,6 +112,19 @@ Ces quatre règles lisent les mêmes heures que le gel (`fetchHourly`, 7 jours p
 - `windAlerts` prévient des rafales de 58 km/h ou plus, d'avril à octobre, quand une culture tuteurée (`WIND_CROPS` : tomate, haricot) est en terre ou qu'un voile est posé (`fleece: true`). Pas d'alerte « le vent assèche le sol » : l'ET0 compte déjà le vent.
 
 Exemples de textes : « Haricot : sol à 9 °C en surface, trop froid pour semer (15,6 °C minimum). Attends quelques jours. », « Sortie de limaces probable la nuit du mardi 20 au mercredi 21 octobre (sol humide, nuit douce). Fais un tour à la tombée de la nuit autour des jeunes plants : salade, haricot. »
+
+## Géométrie du plan
+
+Ces fonctions redressent une photo du jardin. Elles ne connaissent ni la photo ni l'unité : un point est `{ x, y }`, en pixels sur la photo ou en centimètres au sol. Chaque fonction renvoie un `Result` avec un message en français plutôt que de lever une exception.
+
+- `homographyFromQuad(from, to)` calcule l'homographie qui envoie les quatre coins `from` sur les quatre coins `to` (transformation linéaire directe, système 8 × 8). En général, `from` est la liste des coins touchés sur la photo et `to` les mêmes coins au sol. Les deux quadrilatères doivent être convexes et pris dans le même ordre du tour ; le sens peut changer, puisque la photo a l'axe y vers le bas. Trois coins alignés, un coin répété ou un ordre qui croise les côtés renvoient « Les quatre coins doivent former un quadrilatère convexe, pris dans l’ordre du tour. » Les coordonnées sont recentrées et remises à l'échelle avant le calcul (normalisation de Hartley), si bien que des pixels et des centimètres donnent la même précision.
+- `invertHomography(h)` donne la transformation inverse, du sol vers la photo, pour poser un plan sur la photo.
+- `projectPoint(h, point)` et `projectPolygon(h, points)` appliquent l'homographie. Un point sur la ligne d'horizon de la photo, ou au-delà (le ciel), n'a pas d'image au sol : « Point à l’horizon, hors du sol. » Un contour qui franchit l'horizon est refusé de la même façon. L'inverse garde le même sens : un point du sol situé derrière l'appareil n'a pas d'image sur la photo.
+- `polygonArea`, `signedPolygonArea` et `polygonPerimeter` mesurent un contour simple, convexe ou non (formule du lacet). L'aire signée est positive dans le sens trigonométrique, axe y vers le haut. Un contour qui répète son premier point à la fin est accepté. Un contour de moins de trois coins, plat ou qui se croise est refusé.
+
+L'homographie est une matrice 3 × 3 en ligne, `h33` ramené à 1 quand il n'est pas nul. Un test de propriétés photographie des rectangles au hasard (inclinaison, cap, roulis, hauteur et focale tirés au sort) puis les redresse : coins, aire et périmètre retombent à 0,1 % près.
+
+Les dimensions ne valent que si l'échelle est connue : sans longueur mesurée au sol, le plan ne donne que des proportions.
 
 ## Données de cultures
 

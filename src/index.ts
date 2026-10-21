@@ -185,3 +185,23 @@ export {
   type WindOptions,
   type WindParams,
 } from './alerts/wind.js';
+export {
+  homographyFromQuad,
+  invertHomography,
+  projectPoint,
+  projectPolygon,
+  polygonArea,
+  signedPolygonArea,
+  polygonPerimeter,
+  NOT_FOUR_CORNERS,
+  NOT_CONVEX,
+  NOT_INVERTIBLE,
+  AT_HORIZON,
+  TOO_FEW_CORNERS,
+  FLAT_OUTLINE,
+  SELF_CROSSING,
+  INVALID_COORDINATE,
+  type Point,
+  type Quad,
+  type Homography,
+} from './geometry/index.js';
