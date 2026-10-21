@@ -87,7 +87,8 @@ function counts(past: Past, pastCrop: Crop, crop: Crop, newSownOn: string, years
   return year < season && year > season - years;
 }
 
-function isShortCrop(crop: Crop): boolean {
+/** Every first harvest within `shortCropMaxDays`: the crop neither gets nor causes a rotation warning. */
+export function isShortCrop(crop: Crop): boolean {
   const delays = crop.firstHarvestDays?.value;
   if (!delays) return false;
   return firstHarvestsOf(delays).every((d) => d.days <= ROTATION_RULES.shortCropMaxDays.value);

@@ -283,10 +283,10 @@ describe('solveCropPlan: refusals', () => {
 });
 
 describe('solveCropPlan: size', () => {
-  it('plans 500 beds holding 480 wished beds within two seconds', () => {
+  it('plans 500 beds holding up to 480 wished beds within two seconds', () => {
     const many = beds(500);
     const ids = catalog.map((c) => c.id);
-    const wishes = ids.map((cropId) => ({ cropId, beds: 40 }));
+    const wishes = ids.map((cropId) => ({ cropId, beds: Math.floor(480 / ids.length) }));
     const started = performance.now();
     const result = solveCropPlan({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours: line(many), cropsPerBed: 1, wishes });
     expect(result.ok).toBe(true);

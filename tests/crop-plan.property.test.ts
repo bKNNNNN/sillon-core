@@ -20,10 +20,16 @@ const inputArb: fc.Arbitrary<CropPlanInput> = fc
       wishes: fc
         .uniqueArray(species, { minLength: 1, maxLength: 7 })
         .chain((list) => fc.tuple(...list.map((cropId) => fc.integer({ min: 1, max: 3 }).map((beds) => ({ cropId, beds }))))),
-      neighbours: fc.array(
-        fc.tuple(fc.integer({ min: 0, max: n - 1 }), fc.integer({ min: 0, max: n - 1 })).filter(([a, b]) => a !== b).map(([a, b]) => [`b${a}`, `b${b}`] as const),
-        { maxLength: 8 },
-      ),
+      neighbours:
+        n < 2
+          ? fc.constant([])
+          : fc.array(
+              fc
+                .tuple(fc.integer({ min: 0, max: n - 2 }), fc.integer({ min: 1, max: n - 1 }))
+                .map(([a, k]) => [`b${a}`, `b${(a + k) % n}`] as const)
+                .filter(([a, b]) => a !== b),
+              { maxLength: 8 },
+            ),
       cropsPerBed: fc.integer({ min: 1, max: 3 }),
     }),
   )
