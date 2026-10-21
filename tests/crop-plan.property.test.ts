@@ -106,6 +106,24 @@ describe('solveCropPlan properties', () => {
     );
   });
 
+  it('no wished crop left out improves the best option by taking the place of a placed one', () => {
+    fc.assert(
+      fc.property(inputArb, (input) => {
+        const best = value(solveCropPlan(input)).options[0]!;
+        const plan = best.assignments;
+        for (const u of best.unplaced)
+          plan.forEach((bed, a) => {
+            if (bed.cropIds.includes(u.cropId)) return;
+            bed.cropIds.forEach((_, i) => {
+              const replaced = plan.map((other, k) => (k === a ? { ...other, cropIds: other.cropIds.map((c, j) => (j === i ? u.cropId : c)) } : other));
+              expect(value(scoreCropPlan(input, replaced)).total).toBeLessThanOrEqual(best.score.total);
+            });
+          });
+      }),
+      { numRuns: 300 },
+    );
+  });
+
   it('is deterministic and ignores the order neighbour pairs are written in', () => {
     fc.assert(
       fc.property(inputArb, (input) => {

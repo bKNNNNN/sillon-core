@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CROP_PLAN_WEIGHTS,
+  MAX_NEIGHBOUR_PAIRS,
+  MAX_PLAN_SLOTS,
   scoreCropPlan,
   solveCropPlan,
   type CropPlanBed,
@@ -144,6 +146,23 @@ describe('solveCropPlan: not enough room', () => {
     expect(best!.unplaced).toEqual([{ cropId: 'courge', name: 'Courge', beds: 2 }]);
     expect(best!.score.unplaced).toBe(2 * W.unplaced);
     expect(best!.score.items.at(-1)!.text).toBe('Courge : il manque 2 emplacements.');
+  });
+
+  it('leaves out the crop that breaks the rotation when another wished crop fits', () => {
+    const tomatoBed: CropPlanBed[] = [{ id: 'c1', history: [{ species: 'tomate', sownOn: '2026-04-01' }] }];
+    const input = { beds: tomatoBed, sownOn: '2027-04-01', wishes: [{ cropId: 'pomme-de-terre' }, { cropId: 'carotte' }] };
+    const { options } = plan(input);
+    expect(options).toHaveLength(1);
+    expect(byBed(options[0]!)).toEqual({ c1: ['carotte'] });
+    expect(options[0]!.unplaced).toEqual([{ cropId: 'pomme-de-terre', name: 'Pomme de terre', beds: 1 }]);
+    expect(options[0]!.score.total).toBe(W.unplaced);
+    const hand = value(scoreCropPlan({ crops: catalog, ...input }, [{ bedId: 'c1', cropIds: ['carotte'] }]));
+    expect(options[0]!.score).toEqual(hand);
+  });
+
+  it('keeps the first wished crop when leaving it out gains nothing', () => {
+    const [best] = plan({ beds: beds(1), wishes: [{ cropId: 'tomate' }, { cropId: 'carotte' }] }).options;
+    expect(byBed(best!)).toEqual({ 'planche-1': ['tomate'] });
   });
 
   it('never puts one crop twice on the same bed', () => {
@@ -313,6 +332,45 @@ describe('solveCropPlan: refusals', () => {
 });
 
 describe('solveCropPlan: size', () => {
+  /** Every bed next to every other one, cut at the pair cap: the densest neighbours the input allows. */
+  const dense = (n: number, max = MAX_NEIGHBOUR_PAIRS): [string, string][] => {
+    const pairs: [string, string][] = [];
+    for (let a = 1; a <= n && pairs.length < max; a++)
+      for (let b = a + 1; b <= n && pairs.length < max; b++) pairs.push([`planche-${a}`, `planche-${b}`]);
+    return pairs;
+  };
+  const ids = catalog.map((c) => c.id);
+  const wishesFor = (slots: number) => ids.map((cropId) => ({ cropId, beds: Math.max(1, Math.floor(slots / ids.length)) }));
+
+  it.each([
+    [100, 4],
+    [125, 4],
+    [166, 3],
+    [500, 1],
+    [500, 4],
+  ])('stays quick with %i beds, %i crops per bed and the most neighbour pairs allowed', (n, cropsPerBed) => {
+    const many = beds(n);
+    const neighbours = dense(n);
+    const started = performance.now();
+    const result = solveCropPlan({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours, cropsPerBed, wishes: wishesFor(Math.min(n * cropsPerBed, MAX_PLAN_SLOTS - ids.length)) });
+    expect(performance.now() - started).toBeLessThan(2000);
+    const { options } = value(result);
+    for (const o of options) {
+      for (const a of o.assignments) expect(a.cropIds.length).toBeLessThanOrEqual(cropsPerBed);
+      expect(o.score.items.reduce((s, i) => s + i.points, 0)).toBe(o.score.total);
+    }
+  });
+
+  it('stays quick when one bed neighbours every other one', () => {
+    const many = beds(500);
+    const neighbours = many.slice(1).map((b) => ['planche-1', b.id] as [string, string]);
+    const started = performance.now();
+    const result = solveCropPlan({ beds: many, crops: catalog, sownOn: '2026-04-01', neighbours, cropsPerBed: 4, wishes: wishesFor(480) });
+    expect(result.ok).toBe(true);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
+
   it('plans 500 beds holding up to 480 wished beds within two seconds', () => {
     const many = beds(500);
     const ids = catalog.map((c) => c.id);
