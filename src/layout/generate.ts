@@ -86,9 +86,20 @@ function longestSideDeg(ring: readonly Point[]): number {
   return normaliseAxis(best.deg);
 }
 
+/**
+ * Beds have no direction, so the axis is brought into (-90, 90]: the along direction then points
+ * right (or straight up), which gives the reading order used for numbering.
+ */
 function normaliseAxis(deg: number): number {
   const d = ((deg % 180) + 180) % 180;
-  return Math.abs(d) < 1e-9 || Math.abs(d - 180) < 1e-9 ? 0 : d;
+  const half = d > 90 + 1e-9 ? d - 180 : d;
+  return Math.abs(half) < 1e-9 ? 0 : half;
+}
+
+/** Reading order: the row furthest across the axis first (top of the plan), then along the axis. */
+function readingOrder(beds: readonly LocalBed[]): LocalBed[] {
+  const row = (b: LocalBed) => Math.round(((b.v0 + b.v1) / 2) * 1e3);
+  return [...beds].sort((a, b) => row(b) - row(a) || a.u0 - b.u0);
 }
 
 function place(ring: Point[], style: LayoutStyle, r: Resolved) {
@@ -128,7 +139,8 @@ function toPlan(f: Frame, style: LayoutStyle, bed: LocalBed, index: number): Lay
 /**
  * Traces beds on a blank plot: row beds (planches), square beds (carrés) or round mounds (buttes),
  * with an aisle between beds and a border along the outline. Deterministic: the same input always
- * gives the same beds, numbered across the axis then along it. Pure geometry, no agronomy number:
+ * gives the same beds, numbered in reading order: rows from the top of the plan down, each from
+ * left to right (for beds running up the plan, from left to right). Pure geometry, no agronomy number:
  * sizes come from the caller or from `LAYOUT_PARAMS` (estimates), spacing from the cultures data.
  */
 export function generateLayout(input: LayoutInput): Result<Layout> {
@@ -150,7 +162,7 @@ export function generateLayout(input: LayoutInput): Result<Layout> {
   if (placed === TOO_MANY) return fail(TOO_MANY_BEDS);
   if (placed.length === 0) return fail(AREA_TOO_SMALL);
 
-  const beds = placed.map((bed, i) => toPlan(frame, input.style, bed, i));
+  const beds = readingOrder(placed).map((bed, i) => toPlan(frame, input.style, bed, i));
   const stats = layoutStats({
     totalAreaCm2: total.value,
     beds,

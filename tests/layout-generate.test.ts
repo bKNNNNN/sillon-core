@@ -50,8 +50,8 @@ describe('generateLayout, rows', () => {
     expect(l.beds.map((b) => b.id)).toEqual(['planche-1', 'planche-2']);
     expect(l.beds.map((b) => b.label)).toEqual(['Planche 1', 'Planche 2']);
     expect(l.beds.map(bounds)).toEqual([
-      { x0: 40, x1: 560, y0: 60, y1: 180 },
       { x0: 40, x1: 560, y0: 220, y1: 340 },
+      { x0: 40, x1: 560, y0: 60, y1: 180 },
     ]);
     for (const b of l.beds) {
       expect(b.shape).toBe('rect');
@@ -61,13 +61,13 @@ describe('generateLayout, rows', () => {
     }
   });
 
-  it('follows an explicit bed axis, numbering beds across it (90 degrees counter-clockwise from the axis)', () => {
+  it('follows an explicit bed axis, numbering beds from left to right', () => {
     const l = layout({ orientation: { bedAxisDeg: 90 } });
     expect(l.bedAxisDeg).toBe(90);
     expect(l.beds.map(bounds)).toEqual([
-      { x0: 400, x1: 520, y0: 40, y1: 360 },
-      { x0: 240, x1: 360, y0: 40, y1: 360 },
       { x0: 80, x1: 200, y0: 40, y1: 360 },
+      { x0: 240, x1: 360, y0: 40, y1: 360 },
+      { x0: 400, x1: 520, y0: 40, y1: 360 },
     ]);
   });
 
@@ -95,19 +95,19 @@ describe('generateLayout, rows', () => {
     const l = layout({ area });
     expect(l.bedAxisDeg).toBe(0);
     expect(l.beds.map(bounds)).toEqual([
-      { x0: 40, x1: 160, y0: 80, y1: 200 },
-      { x0: 40, x1: 160, y0: 240, y1: 360 },
       { x0: 40, x1: 160, y0: 400, y1: 520 },
+      { x0: 40, x1: 160, y0: 240, y1: 360 },
+      { x0: 40, x1: 160, y0: 80, y1: 200 },
     ]);
   });
 
   it('cuts long beds with a cross aisle', () => {
     const l = layout({ sizes: { bedMaxLengthCm: 240 }, aisles: { aisleCm: 40, crossAisleCm: 40 } });
     expect(l.beds.map(bounds)).toEqual([
-      { x0: 40, x1: 280, y0: 60, y1: 180 },
-      { x0: 320, x1: 560, y0: 60, y1: 180 },
       { x0: 40, x1: 280, y0: 220, y1: 340 },
       { x0: 320, x1: 560, y0: 220, y1: 340 },
+      { x0: 40, x1: 280, y0: 60, y1: 180 },
+      { x0: 320, x1: 560, y0: 60, y1: 180 },
     ]);
   });
 
@@ -132,7 +132,7 @@ describe('generateLayout, rows', () => {
 
   it('uses the border and bed width given', () => {
     const l = layout({ aisles: { aisleCm: 30, borderCm: 0 }, sizes: { bedWidthCm: 80 } });
-    expect(l.beds.map(bounds)[0]).toEqual({ x0: 0, x1: 600, y0: 50, y1: 130 });
+    expect(l.beds.map(bounds)[2]).toEqual({ x0: 0, x1: 600, y0: 50, y1: 130 });
     expect(l.beds).toHaveLength(3);
   });
 
@@ -144,9 +144,19 @@ describe('generateLayout, rows', () => {
     expect(l.beds).toHaveLength(2);
     expect(l.beds[0]!.lengthCm).toBeCloseTo(520);
     const c = l.beds[0]!.centerCm;
-    const expected = rot({ x: 300, y: 120 });
+    const expected = rot({ x: 300, y: 280 });
     expect(c.x).toBeCloseTo(expected.x);
     expect(c.y).toBeCloseTo(expected.y);
+  });
+
+  it('numbers beds left to right whatever the axis direction given', () => {
+    const a = layout({ orientation: { bedAxisDeg: 0 } });
+    const b = layout({ orientation: { bedAxisDeg: 180 } });
+    const c = layout({ orientation: { bedAxisDeg: -90 } });
+    expect(b.bedAxisDeg).toBe(0);
+    expect(c.bedAxisDeg).toBe(90);
+    expect(b.beds.map(bounds)).toEqual(a.beds.map(bounds));
+    expect(bounds(c.beds[0]!).x0).toBeCloseTo(80);
   });
 
   it('is deterministic', () => {
@@ -166,12 +176,12 @@ describe('generateLayout, squares', () => {
     const l = layout({ style: 'squares' });
     expect(l.beds.map((b) => b.label)).toEqual(['Carré 1', 'Carré 2', 'Carré 3', 'Carré 4', 'Carré 5', 'Carré 6']);
     expect(l.beds.map(bounds)).toEqual([
-      { x0: 80, x1: 200, y0: 60, y1: 180 },
-      { x0: 240, x1: 360, y0: 60, y1: 180 },
-      { x0: 400, x1: 520, y0: 60, y1: 180 },
       { x0: 80, x1: 200, y0: 220, y1: 340 },
       { x0: 240, x1: 360, y0: 220, y1: 340 },
       { x0: 400, x1: 520, y0: 220, y1: 340 },
+      { x0: 80, x1: 200, y0: 60, y1: 180 },
+      { x0: 240, x1: 360, y0: 60, y1: 180 },
+      { x0: 400, x1: 520, y0: 60, y1: 180 },
     ]);
     expect(l.beds[0]!.id).toBe('carre-1');
   });

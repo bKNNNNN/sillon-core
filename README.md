@@ -139,14 +139,14 @@ const plan = generateLayout({
   orientation: { northDeg: 90 }, // le nord vers le haut du plan
   crops, // les cultures de sillon-cultures, lues par parseCrops
 });
-// plan.value.beds : Planche 1 et Planche 2, 520 × 120 cm chacune
+// plan.value.beds : Planche 1 (en haut) et Planche 2, 520 × 120 cm chacune
 // plan.value.stats : 12,48 m² cultivés sur 24 m², conseil d'exposition, plants par culture
 ```
 
 - Planches : des bandes parallèles à l'axe, centrées dans le terrain. Une bande s'arrête là où le contour se resserre et garde la bordure partout ; un morceau plus court que `bedMinLengthCm` est abandonné. Avec `bedMaxLengthCm`, une planche trop longue est coupée en parts égales par une allée transversale.
 - Carrés : une grille centrée sur le terrain ; un carré n'est gardé que s'il tient avec sa bordure.
 - Buttes : des buttes rondes en rangs décalés, à `moundCm + aisleCm` les unes des autres dans toutes les directions. Une butte est dessinée par un polygone de 32 côtés, et son aire est celle de ce polygone.
-- L'axe des planches suit le plus long côté du terrain, sauf si tu donnes `bedAxisDeg` (en degrés, sens trigonométrique depuis l'axe x). Les planches sont numérotées en travers de l'axe, puis le long.
+- L'axe des planches suit le plus long côté du terrain, sauf si tu donnes `bedAxisDeg` (en degrés, sens trigonométrique depuis l'axe x). Les planches sont numérotées dans l'ordre de lecture : du haut du plan vers le bas, chaque rang de gauche à droite.
 - Les tailles par défaut sont dans `LAYOUT_PARAMS` : planche de 120 cm de large, 100 cm de long au moins, carré de 120 cm, butte de 100 cm. Ce sont des estimations ; `plan.params` dit pour chaque valeur si elle vient de la saisie ou d'une estimation.
 - `stats` donne la surface totale, la surface cultivée, la surface d'allées (tout ce qui n'est pas planche) et la part cultivée. Pour chaque culture, `bedCapacity` compte les plants qui tiennent dans chaque planche avec son `spacingCm` : des rangs espacés de `betweenRows` (un rang au moins), des plants espacés de `inRow`, par cordes sur une butte. Une culture sans écartement rend `null` : pas de donnée, pas de chiffre inventé.
 - `exposureNote` dit où mettre les cultures hautes. Planches nord-sud : au bout nord. Planches est-ouest : sur la planche la plus au nord. Ces deux cas suivent l'Oregon State University Extension (`EXPOSURE_SOURCE`). Les planches en biais, les carrés et les buttes étendent la même règle et sont marqués comme estimation. Sans nord, la note le demande.
