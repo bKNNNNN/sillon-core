@@ -11,17 +11,30 @@ export type GridOptions = { size: number; aisle: number; border: number };
 export const TOO_MANY = Symbol('too many beds');
 type Placed = LocalBed[] | typeof TOO_MANY;
 
-/** Cuts a run of length `length` into equal parts no longer than `max`, separated by `cross`. */
+/** `parts` beds of length `part` separated by `cross`, centred on the run. */
+function lay(from: number, to: number, parts: number, part: number, cross: number): [number, number][] {
+  const offset = (to - from - (parts * part + (parts - 1) * cross)) / 2;
+  return Array.from({ length: parts }, (_, k): [number, number] => {
+    const start = from + offset + k * (part + cross);
+    return [start, start + part];
+  });
+}
+
+/**
+ * Cuts a run into equal parts no longer than `max`, separated by `cross`. When the fewest parts that
+ * stay under `max` would fall under `minLength`, no equal split fits (more parts are shorter still,
+ * fewer pass `max`), so the run holds as many beds of `max` length as it can, centred. A longer run
+ * never holds fewer beds.
+ */
 function split(from: number, to: number, opts: RowsOptions): [number, number][] {
   const length = to - from;
   const max = opts.maxLength;
-  const parts = max === undefined || length <= max + CM_EPS ? 1 : Math.ceil((length + opts.cross) / (max + opts.cross) - CM_EPS);
+  if (max === undefined || length <= max + CM_EPS) return length + CM_EPS < opts.minLength ? [] : [[from, to]];
+  const parts = Math.ceil((length + opts.cross) / (max + opts.cross) - CM_EPS);
   const part = (length - (parts - 1) * opts.cross) / parts;
-  if (part + CM_EPS < opts.minLength) return [];
-  return Array.from({ length: parts }, (_, k): [number, number] => {
-    const start = from + k * (part + opts.cross);
-    return [start, start + part];
-  });
+  if (part + CM_EPS >= opts.minLength) return lay(from, to, parts, part, opts.cross);
+  const full = Math.floor((length + opts.cross) / (max + opts.cross) + CM_EPS);
+  return lay(from, to, full, max, opts.cross);
 }
 
 /** Row beds (planches): strips across the axis, each cut where the outline narrows. */

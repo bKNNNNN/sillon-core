@@ -117,6 +117,52 @@ describe('generateLayout, rows', () => {
     expect(lengths).toEqual([290, 290, 290, 290]);
   });
 
+  it('keeps beds of the maximum length when equal parts would fall under the minimum', () => {
+    const lengthsFor = (run: number) => {
+      const out = generateLayout({
+        area: rect(run + 100, 220),
+        style: 'rows',
+        orientation: { bedAxisDeg: 0 },
+        aisles: { aisleCm: 40, borderCm: 50, crossAisleCm: 60 },
+        sizes: { bedWidthCm: 120, bedMinLengthCm: 100, bedMaxLengthCm: 150 },
+      });
+      return value(out).beds.map((b) => Math.round(b.lengthCm * 1000) / 1000);
+    };
+    expect(lengthsFor(360)).toEqual([150, 150]);
+    expect(lengthsFor(380)).toEqual([150, 150]);
+    expect(lengthsFor(400)).toEqual([150, 150]);
+    expect(lengthsFor(420)).toEqual([100, 100, 100]);
+    const l = value(
+      generateLayout({
+        area: rect(480, 220),
+        style: 'rows',
+        orientation: { bedAxisDeg: 0 },
+        aisles: { aisleCm: 40, borderCm: 50, crossAisleCm: 60 },
+        sizes: { bedWidthCm: 120, bedMinLengthCm: 100, bedMaxLengthCm: 150 },
+      }),
+    );
+    expect(l.beds.map(bounds)).toEqual([
+      { x0: 60, x1: 210, y0: 50, y1: 170 },
+      { x0: 270, x1: 420, y0: 50, y1: 170 },
+    ]);
+  });
+
+  it('keeps a bed that exactly fills the plot across, whatever the float noise', () => {
+    for (const [border, width] of [[33.3, 120], [50, 77.7], [1.7e-8, 100.1]] as const) {
+      const l = value(
+        generateLayout({
+          area: rect(300 + 2 * border, width + 2 * border),
+          style: 'rows',
+          orientation: { bedAxisDeg: 0 },
+          aisles: { aisleCm: 40, borderCm: border },
+          sizes: { bedWidthCm: width },
+        }),
+      );
+      expect(l.beds).toHaveLength(1);
+      expect(l.beds[0]!.lengthCm).toBeCloseTo(300, 3);
+    }
+  });
+
   it('drops leftovers shorter than the minimum bed length', () => {
     const area = [
       { x: 0, y: 0 },

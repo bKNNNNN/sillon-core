@@ -49,14 +49,18 @@ function breakpoints(ring: readonly Point[], lo: number, hi: number): number[] {
   return us.filter((u, i) => i === 0 || u - us[i - 1]! > CM_EPS);
 }
 
-/** True when the segment {u} x [lo, hi] lies inside the outline; `u` is never a breakpoint. */
+/**
+ * True when the segment {u} x [lo, hi] lies inside the outline; `u` is never a breakpoint. An edge
+ * within CM_EPS of either end does not count as crossing, so a strip that exactly fills the outline
+ * is not lost to float noise.
+ */
 function segmentInside(ring: readonly Point[], u: number, lo: number, hi: number): boolean {
   for (let i = 0; i < ring.length; i++) {
     const a = ring[i]!;
     const b = ring[(i + 1) % ring.length]!;
     if ((a.x - u) * (b.x - u) >= 0) continue;
     const v = a.y + ((u - a.x) * (b.y - a.y)) / (b.x - a.x);
-    if (v > lo && v < hi) return false;
+    if (v > lo + CM_EPS && v < hi - CM_EPS) return false;
   }
   return inside(ring, { x: u, y: (lo + hi) / 2 });
 }

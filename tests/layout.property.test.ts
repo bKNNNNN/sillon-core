@@ -159,4 +159,50 @@ describe('generateLayout properties', () => {
       { numRuns: 100 },
     );
   });
+  it('never yields fewer row beds on a longer run when a maximum length is set', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          border: fc.double({ min: 0, max: 100, noNaN: true }),
+          cross: fc.double({ min: 20, max: 120, noNaN: true }),
+          min: fc.double({ min: 50, max: 400, noNaN: true }),
+          extra: fc.double({ min: 0, max: 200, noNaN: true }),
+          short: fc.double({ min: 0, max: 3000, noNaN: true }),
+          more: fc.double({ min: 0, max: 600, noNaN: true }),
+        }),
+        ({ border, cross, min, extra, short, more }) => {
+          const max = min + extra;
+          const beds = (run: number) => {
+            const out = generateLayout({
+              area: [
+                { x: 0, y: 0 },
+                { x: run + 2 * border, y: 0 },
+                { x: run + 2 * border, y: 120 + 2 * border },
+                { x: 0, y: 120 + 2 * border },
+              ],
+              style: 'rows',
+              orientation: { bedAxisDeg: 0 },
+              aisles: { aisleCm: 40, borderCm: border, crossAisleCm: cross },
+              sizes: { bedWidthCm: 120, bedMinLengthCm: min, bedMaxLengthCm: max },
+            });
+            if (!out.ok) {
+              expect(out.error).toBe(AREA_TOO_SMALL);
+              return [];
+            }
+            return out.value.beds;
+          };
+          const shorter = beds(short + 1);
+          const longer = beds(short + 1 + more);
+          expect(longer.length).toBeGreaterThanOrEqual(shorter.length);
+          // Bed lengths come out rounded to 1e-4 cm.
+          for (const b of [...shorter, ...longer]) {
+            expect(b.lengthCm).toBeGreaterThanOrEqual(min - 1e-4);
+            expect(b.lengthCm).toBeLessThanOrEqual(max + 1e-4);
+          }
+          if (short + 1 >= min) expect(shorter.length).toBeGreaterThan(0);
+        },
+      ),
+      { numRuns: 300 },
+    );
+  });
 });
