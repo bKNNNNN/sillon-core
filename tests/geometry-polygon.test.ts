@@ -53,6 +53,25 @@ describe('polygon area', () => {
     expect(polygonPerimeter(bowTie)).toEqual({ ok: false, error: 'Le contour se croise.' });
   });
 
+  it('refuses an outline where a corner touches a far edge', () => {
+    // Corner (2, 0) of the last edges lands on the first edge.
+    expect(polygonArea(pts(0, 0, 4, 0, 4, 4, 2, 0, 0, 3))).toEqual({ ok: false, error: 'Le contour se croise.' });
+    // The same, seen from the other segment of the pair.
+    expect(polygonArea(pts(2, 0, 0, 3, 0, 0, 4, 0, 4, 4)).ok).toBe(false);
+  });
+
+  it('refuses an outline that folds back over one of its edges', () => {
+    expect(polygonArea(pts(0, 0, 4, 0, 4, 2, 1, 0, 0, 2)).ok).toBe(false);
+  });
+
+  it('refuses input that is not a list of corners', () => {
+    expect(polygonArea(null as unknown as Point[])).toEqual({ ok: false, error: 'Il faut au moins trois coins.' });
+    expect(polygonArea([{ x: 0, y: 0 }, undefined, { x: 1, y: 1 }] as unknown as Point[])).toEqual({
+      ok: false,
+      error: 'Coordonnée invalide.',
+    });
+  });
+
   it('does not mutate its input', () => {
     const square = Object.freeze(pts(0, 0, 1, 0, 1, 1, 0, 1).map((p) => Object.freeze(p)));
     expect(value(polygonArea(square))).toBe(1);

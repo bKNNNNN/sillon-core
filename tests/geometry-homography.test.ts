@@ -52,8 +52,9 @@ describe('homographyFromQuad', () => {
     const h = value(homographyFromQuad(ground, photo));
     const centre = value(projectPoint(h, { x: 100, y: 50 }));
     const naiveY = (2410 + 2385 + 1320 + 1335) / 4;
-    // The far half looks smaller, so the true centre sits below (larger y than) the naive average.
-    expect(centre.y).toBeGreaterThan(naiveY);
+    // The far half looks smaller, so the true centre sits nearer the far edge (smaller y) than the naive average.
+    expect(centre.y).toBeLessThan(naiveY - 50);
+    expect(centre.y).toBeGreaterThan(1335);
   });
 
   it('accepts a mirrored ground (photo y down, ground y up)', () => {
