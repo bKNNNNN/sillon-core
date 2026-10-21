@@ -12,6 +12,7 @@ Le moteur agronomique de Sillon, en TypeScript. Il ne contient que des calculs :
 - `seedLotOutlook` estime si un lot de graines germe encore bien d'après son âge et la durée de vie des graines de l'espèce. Il distingue un lot sans année (`no-year`) d'une espèce sans durée de vie connue (`no-lifespan`), donne l'année `goodUntil` (« Bonne jusqu'en 2030 ») et signale `lastSafeSeason` l'année où le lot atteint sa durée de vie (« Dernière saison sûre »). Une année de récolte postérieure à l'année en cours est traitée comme inconnue. `germinationOutlook` reste disponible sous sa forme courte.
 - `validatePlanting`, `isValidCivilDate` et `isTooFarInFuture` refusent les dates impossibles, les dates dans le futur et les repiquages avant semis. Les messages d'erreur sont en français.
 - `homographyFromQuad`, `invertHomography`, `polygonArea` et `polygonPerimeter` redressent une photo du jardin et mesurent les planches (voir « Géométrie du plan »).
+- `generateLayout` trace des planches, des carrés ou des buttes sur un terrain nu, avec les allées, la surface cultivée et le nombre de plants par culture (voir « Plan d'un terrain nu »).
 - `fetchForecast` et `fetchArchive` interrogent l'API Open-Meteo pour le lieu que tu passes. En cas de panne, ils renvoient `{ ok: false, error: 'Météo indisponible.' }` au lieu de lever une exception.
 
 ## Installation
@@ -125,6 +126,32 @@ Ces fonctions redressent une photo du jardin. Elles ne connaissent ni la photo n
 L'homographie est une matrice 3 × 3 en ligne, `h33` ramené à 1 quand il n'est pas nul. Un test de propriétés photographie des rectangles au hasard (inclinaison, cap, roulis, hauteur et focale tirés au sort) puis les redresse : coins, aire et périmètre retombent à 0,1 % près.
 
 Les dimensions ne valent que si l'échelle est connue : sans longueur mesurée au sol, le plan ne donne que des proportions.
+
+## Plan d'un terrain nu
+
+`generateLayout` trace des planches sur un terrain vide. Tu lui donnes le contour du terrain en centimètres (axe y vers le haut, convexe ou non, 200 coins au plus), une disposition et la largeur des allées. Il rend les planches, leur contour et des chiffres. Le calcul est déterministe : la même entrée donne toujours les mêmes planches.
+
+```ts
+const plan = generateLayout({
+  area: [{ x: 0, y: 0 }, { x: 600, y: 0 }, { x: 600, y: 400 }, { x: 0, y: 400 }],
+  style: 'rows', // 'rows' (planches), 'squares' (carrés) ou 'mounds' (buttes rondes)
+  aisles: { aisleCm: 40 }, // bordure et allée transversale prennent la même largeur par défaut
+  orientation: { northDeg: 90 }, // le nord vers le haut du plan
+  crops, // les cultures de sillon-cultures, lues par parseCrops
+});
+// plan.value.beds : Planche 1 (en haut) et Planche 2, 520 × 120 cm chacune
+// plan.value.stats : 12,48 m² cultivés sur 24 m², conseil d'exposition, plants par culture
+```
+
+- Planches : des bandes parallèles à l'axe, centrées dans le terrain. Une bande s'arrête là où le contour se resserre et garde la bordure partout ; un morceau plus court que `bedMinLengthCm` est abandonné. Avec `bedMaxLengthCm`, une planche trop longue est coupée en parts égales par une allée transversale.
+- Carrés : une grille centrée sur le terrain ; un carré n'est gardé que s'il tient avec sa bordure.
+- Buttes : des buttes rondes en rangs décalés, à `moundCm + aisleCm` les unes des autres dans toutes les directions. Une butte est dessinée par un polygone de 32 côtés, et son aire est celle de ce polygone.
+- L'axe des planches suit le plus long côté du terrain, sauf si tu donnes `bedAxisDeg` (en degrés, sens trigonométrique depuis l'axe x). Les planches sont numérotées dans l'ordre de lecture : du haut du plan vers le bas, chaque rang de gauche à droite.
+- Les tailles par défaut sont dans `LAYOUT_PARAMS` : planche de 120 cm de large, 100 cm de long au moins, carré de 120 cm, butte de 100 cm. Ce sont des estimations ; `plan.params` dit pour chaque valeur si elle vient de la saisie ou d'une estimation.
+- `stats` donne la surface totale, la surface cultivée, la surface d'allées (tout ce qui n'est pas planche) et la part cultivée. Pour chaque culture, `bedCapacity` compte les plants qui tiennent dans chaque planche avec son `spacingCm` : des rangs espacés de `betweenRows` (un rang au moins), des plants espacés de `inRow`, par cordes sur une butte. Une culture sans écartement rend `null` : pas de donnée, pas de chiffre inventé.
+- `exposureNote` dit où mettre les cultures hautes. Planches nord-sud : au bout nord. Planches est-ouest : sur la planche la plus au nord. Ces deux cas suivent l'Oregon State University Extension (`EXPOSURE_SOURCE`). Les planches en biais, les carrés et les buttes étendent la même règle et sont marqués comme estimation. Sans nord, la note le demande.
+
+Refus, avec un message en français : allée nulle, négative ou de plus de 10 m, dimension invalide, angle non fini, contour invalide (mêmes messages que `polygonArea`), terrain de plus de 10 km, contour de plus de 200 coins, terrain trop petit pour une seule planche, plus de 500 planches.
 
 ## Données de cultures
 
