@@ -25,3 +25,39 @@ export {
 } from './generate.js';
 export { layoutStats, bedCapacity, exposureNote, EXPOSURE_SOURCE } from './stats.js';
 export { LAYOUT_PARAMS, MOUND_SIDES, MAX_BEDS, MAX_AREA_CORNERS } from './params.js';
+export type {
+  CropPlanPast,
+  CropPlanBed,
+  CropPlanWish,
+  CropPlanInput,
+  CropPlanStrategy,
+  ScoreKind,
+  ScoreItem,
+  ScoreBreakdown,
+  CropPlanAssignment,
+  CropPlanUnplaced,
+  CropPlanOption,
+  CropPlan,
+  CropPlanFreeCrop,
+} from './crop-plan-types.js';
+export { MAX_IMPROVE_WORK, solveCropPlan, scoreCropPlan } from './crop-plan.js';
+export { MAX_EXACT_BEDS, MAX_EXACT_SLOTS, MAX_EXACT_WORK } from './crop-plan-exact.js';
+export {
+  CROP_PLAN_WEIGHTS,
+  MAX_CROPS_PER_BED,
+  MAX_WISHES,
+  MAX_PLAN_SLOTS,
+  MAX_HISTORY_PER_BED,
+  MAX_NEIGHBOUR_PAIRS,
+  MAX_CROP_ID_LENGTH,
+  INVALID_CROP_ID,
+  NO_BED,
+  NO_WISH,
+  BED_WITHOUT_ID,
+  INVALID_BED_COUNT,
+  INVALID_CROPS_PER_BED,
+  INVALID_OPTIONS,
+  SELF_NEIGHBOUR,
+  PLAN_TOO_LARGE,
+} from './crop-plan-input.js';
+export { neighbouringBeds, INVALID_GAP, INVALID_BED_OUTLINE } from './neighbours.js';
